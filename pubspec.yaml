@@ -1,0 +1,37 @@
+name: echomatch
+description: "Connect, compete, and find your match! This real-time social trivia app blends brainy fun with unexpected connections, letting you bond over shared knowledge and spark new relationships."
+publish_to: "none"
+version: 1.0.0
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  firebase_auth: '>=5.3.3'
+  cloud_firestore: '>=5.5.0'
+  firebase_core: ^4.4.0
+  http: ^1.0.0
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.1.0
+  provider: ^6.1.2
+  go_router: ^16.2.0
+  shared_preferences: ^2.0.0
+  intl: 0.20.2
+  uuid: ^4.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icons/dreamflow_icon.jpg
+  remove_alpha_ios: true

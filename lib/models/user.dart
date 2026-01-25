@@ -1,0 +1,111 @@
+enum Gender { male, female }
+
+class User {
+  final String id;
+  final String email;
+  final String username;
+  final String? avatarUrl;
+  final String city;
+  final String? bio;
+  final Gender gender;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool isActive;
+  final int totalGamesPlayed;
+  final int totalMatches;
+
+  User({
+    required this.id,
+    required this.email,
+    required this.username,
+    this.avatarUrl,
+    required this.city,
+    this.bio,
+    required this.gender,
+    required this.createdAt,
+    required this.updatedAt,
+    this.isActive = true,
+    this.totalGamesPlayed = 0,
+    this.totalMatches = 0,
+  });
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    final genderRaw = json['gender'];
+    Gender parsedGender;
+    if (genderRaw is String) {
+      parsedGender = Gender.values.firstWhere(
+        (g) => g.name.toLowerCase() == genderRaw.toLowerCase(),
+        orElse: () => Gender.male,
+      );
+    } else if (genderRaw is int) {
+      parsedGender = (genderRaw >= 0 && genderRaw < Gender.values.length)
+          ? Gender.values[genderRaw]
+          : Gender.male;
+    } else {
+      parsedGender = Gender.male;
+    }
+
+    final username = (json['username'] as String?)?.trim();
+    final legacyDisplayName = (json['displayName'] as String?)?.trim();
+
+    return User(
+      id: json['id'] as String,
+      email: json['email'] as String,
+      username: (username == null || username.isEmpty)
+          ? (legacyDisplayName ?? '')
+          : username,
+      avatarUrl: json['avatarUrl'] as String?,
+      city: json['city'] as String,
+      bio: json['bio'] as String?,
+      gender: parsedGender,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      isActive: json['isActive'] as bool? ?? true,
+      totalGamesPlayed: json['totalGamesPlayed'] as int? ?? 0,
+      totalMatches: json['totalMatches'] as int? ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'email': email,
+    'username': username,
+    'avatarUrl': avatarUrl,
+    'city': city,
+    'bio': bio,
+    'gender': gender.name,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+    'isActive': isActive,
+    'totalGamesPlayed': totalGamesPlayed,
+    'totalMatches': totalMatches,
+  };
+
+  User copyWith({
+    String? id,
+    String? email,
+    String? username,
+    String? avatarUrl,
+    String? city,
+    String? bio,
+    Gender? gender,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isActive,
+    int? totalGamesPlayed,
+    int? totalMatches,
+  }) => User(
+    id: id ?? this.id,
+    email: email ?? this.email,
+    username: username ?? this.username,
+    avatarUrl: avatarUrl ?? this.avatarUrl,
+    city: city ?? this.city,
+    bio: bio ?? this.bio,
+    gender: gender ?? this.gender,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    isActive: isActive ?? this.isActive,
+    totalGamesPlayed: totalGamesPlayed ?? this.totalGamesPlayed,
+    totalMatches: totalMatches ?? this.totalMatches,
+  );
+}

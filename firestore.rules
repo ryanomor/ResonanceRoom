@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isSelf(userId) { return signedIn() && request.auth.uid == userId; }
+
+    // Helpers to load referenced docs
+    function getRoom(roomId) { return get(/databases/$(database)/documents/rooms/$(roomId)); }
+    function getMatch(matchId) { return get(/databases/$(database)/documents/matches/$(matchId)); }
+
+    // Determine if requester is host of a room
+    function isRoomHost(roomId) {
+      return signedIn() && getRoom(roomId).data.hostId == request.auth.uid;
+    }
+
+    // Determine if requester participates in a room
+    function isApprovedParticipant(roomId) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/roomParticipants/$(roomId + ':' + request.auth.uid));
+    }
+
+    // Determine if requester is in a match
+    function isMatchParticipant(matchId) {
+      return signedIn() &&
+        (getMatch(matchId).data.user1Id == request.auth.uid || getMatch(matchId).data.user2Id == request.auth.uid);
+    }
+
+    // USERS: each user can read/write only their own profile
+    match /users/{userId} {
+      allow get: if isSelf(userId);
+      allow list: if false; // prevent listing all users
+      allow create: if isSelf(request.resource.data.id);
+      allow update: if isSelf(userId);
+      allow delete: if false;
+    }
+
+    // ROOMS: readable to signed-in users, managed by host only
+    match /rooms/{roomId} {
+      allow get, list: if signedIn();
+      allow create: if signedIn() && request.resource.data.hostId == request.auth.uid;
+      allow update, delete: if isRoomHost(roomId);
+    }
+
+    // ROOM PARTICIPANTS: one document per (roomId:userId)
+    match /roomParticipants/{participantId} {
+      allow get, list: if signedIn();
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      // Updates by the participant (e.g., leave) or by the room host (e.g., approve/mark paid)
+      allow update: if signedIn() && (
+        request.auth.uid == resource.data.userId || isRoomHost(resource.data.roomId)
+      );
+      allow delete: if isRoomHost(resource.data.roomId);
+    }
+
+    // MATCHES: visible and writable only to the two participants
+    match /matches/{matchId} {
+      allow get: if isMatchParticipant(matchId);
+      allow list: if false;
+      allow create: if signedIn() && (request.resource.data.user1Id == request.auth.uid || request.resource.data.user2Id == request.auth.uid);
+      allow update: if isMatchParticipant(matchId);
+      allow delete: if false;
+    }
+
+    // CHAT MESSAGES: top-level collection scoped by matchId
+    match /chatMessages/{messageId} {
+      allow get, list: if signedIn() && isMatchParticipant(resource.data.matchId);
+      allow create: if signedIn() && request.resource.data.senderId == request.auth.uid && isMatchParticipant(request.resource.data.matchId);
+      // Allow marking read by either participant; do not restrict fields here for simplicity
+      allow update: if signedIn() && isMatchParticipant(resource.data.matchId);
+      allow delete: if false;
+    }
+
+    // GAME SESSIONS: readable to participants and host; writable by host
+    match /gameSessions/{sessionId} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn() && isRoomHost(request.resource.data.roomId);
+      allow update, delete: if isRoomHost(resource.data.roomId);
+    }
+
+    // USER ANSWERS: created by participants for their own userId
+    match /userAnswers/{answerId} {
+      allow get, list: if signedIn();
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // USER SELECTIONS: created by participants (selectorUserId)
+    match /userSelections/{selectionId} {
+      allow get, list: if signedIn();
+      allow create: if signedIn() && request.resource.data.selectorUserId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // QUESTIONS: readable to all signed-in; write restricted
+    match /questions/{questionId} {
+      allow get, list: if signedIn();
+      allow create, update, delete: if false;
+    }
+  }
+}

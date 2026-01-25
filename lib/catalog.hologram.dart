@@ -1,0 +1,17 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: unused_import
+import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
+import "package:firebase_auth/firebase_auth.dart";
+import "package:cloud_firestore/cloud_firestore.dart";
+import "package:firebase_core/firebase_core.dart";
+import "package:http/http.dart";
+import "package:cupertino_icons/cupertino_icons.dart";
+import "package:google_fonts/google_fonts.dart";
+import "package:provider/provider.dart";
+import "package:go_router/go_router.dart";
+import "package:shared_preferences/shared_preferences.dart";
+import "package:intl/intl.dart";
+import "package:uuid/uuid.dart";

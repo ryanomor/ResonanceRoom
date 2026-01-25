@@ -1,0 +1,63 @@
+# Flutter & Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.buildlog/
+.metadata
+
+# Build outputs
+build/
+**/build/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Android
+android/.gradle/
+android/local.properties
+android/key.properties
+android/app/*.keystore
+android/app/*.jks
+android/app/google-services.json
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework/
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Runner/GoogleService-Info.plist
+
+# Web service worker (generated in some setups)
+web/firebase-messaging-sw.js
+
+# Firebase & tooling caches
+.firebase/
+.firebaserc.local
+
+# Functions (Cloud Functions)
+functions/node_modules/
+functions/lib/
+functions/dist/
+functions/.runtimeconfig.json
+functions/.env
+functions/.env.*
+
+# Env files (do not commit secrets)
+.env
+.env.*
+env/*.json
+!env/env.example.json
+
+# Coverage
+coverage/
+
+# Misc
+*.log
