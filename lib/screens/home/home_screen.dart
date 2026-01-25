@@ -10,9 +10,7 @@ import 'package:echomatch/services/match_service.dart';
 import 'package:echomatch/theme.dart';
 import 'package:intl/intl.dart';
 import 'package:echomatch/widgets/city_picker_sheet.dart';
-import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
-import 'package:echomatch/firebase_options.dart';
+import 'package:echomatch/utils/demo_seed.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -63,29 +61,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _seedDemo() async {
     setState(() => _isLoading = true);
     try {
-      final projectId = DefaultFirebaseOptions.currentPlatform.projectId;
-      final url = Uri.parse(
-          'https://us-central1-$projectId.cloudfunctions.net/seed_nyc_demo');
-      final user = fb_auth.FirebaseAuth.instance.currentUser;
-      final idToken = await user?.getIdToken();
-
-      if (idToken == null) {
-        throw Exception('Not authenticated');
-      }
-
-      final resp = await http.post(url, headers: {
-        'Authorization': 'Bearer $idToken',
-        'Content-Type': 'application/json',
-      });
-
-      if (resp.statusCode >= 200 && resp.statusCode < 300) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Seeded demo data for NYC')));
-      } else {
-        debugPrint('Seeding failed [${resp.statusCode}]: ${resp.body}');
-        throw Exception('Seeding HTTP ${resp.statusCode}');
-      }
+      await DemoSeeder().seedNYC();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Seeded demo data for NYC')));
     } catch (e) {
       debugPrint('Seeding failed: $e');
       if (!mounted) return;
