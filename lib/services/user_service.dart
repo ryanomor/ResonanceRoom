@@ -48,6 +48,12 @@ class UserService {
       isActive: (data['isActive'] as bool?) ?? true,
       totalGamesPlayed: (data['totalGamesPlayed'] as num?)?.toInt() ?? 0,
       totalMatches: (data['totalMatches'] as num?)?.toInt() ?? 0,
+      favoriteCities: (data['favoriteCities'] is List)
+          ? (data['favoriteCities'] as List)
+              .whereType<dynamic>()
+              .map((e) => e.toString())
+              .toList()
+          : const [],
     );
   }
 

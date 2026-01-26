@@ -262,6 +262,42 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Returns true if the given city is in the user's favorites (case-insensitive, base name).
+  bool isCityFavorited(String city) {
+    final user = _currentUser;
+    if (user == null) return false;
+    final base = city.split(',').first.trim().toLowerCase();
+    return user.favoriteCities.any((c) => c.trim().toLowerCase() == base);
+  }
+
+  /// Toggle favorite city for the current user and persist to Firestore.
+  Future<void> toggleFavoriteCity(String city) async {
+    final user = _currentUser;
+    if (user == null) return;
+    try {
+      final base = city.split(',').first.trim();
+      final favorites = List<String>.from(user.favoriteCities);
+      final existingIndex = favorites.indexWhere((c) => c.trim().toLowerCase() == base.toLowerCase());
+      if (existingIndex >= 0) {
+        favorites.removeAt(existingIndex);
+      } else {
+        // Insert at front for recency ordering
+        favorites.removeWhere((c) => c.trim().toLowerCase() == base.toLowerCase());
+        favorites.insert(0, base);
+      }
+
+      final updated = user.copyWith(
+        favoriteCities: favorites,
+        updatedAt: DateTime.now(),
+      );
+      await _userService.updateUser(updated);
+      _currentUser = updated;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('toggleFavoriteCity failed: $e');
+    }
+  }
+
   @override
   void dispose() {
     _authSub?.cancel();

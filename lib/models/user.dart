@@ -14,6 +14,7 @@ class User {
   final bool isActive;
   final int totalGamesPlayed;
   final int totalMatches;
+  final List<String> favoriteCities;
 
   User({
     required this.id,
@@ -29,6 +30,7 @@ class User {
     this.isActive = true,
     this.totalGamesPlayed = 0,
     this.totalMatches = 0,
+    this.favoriteCities = const [],
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -68,6 +70,12 @@ class User {
       isActive: json['isActive'] as bool? ?? true,
       totalGamesPlayed: json['totalGamesPlayed'] as int? ?? 0,
       totalMatches: json['totalMatches'] as int? ?? 0,
+      favoriteCities: (json['favoriteCities'] is List)
+          ? (json['favoriteCities'] as List)
+              .whereType<dynamic>()
+              .map((e) => e.toString())
+              .toList()
+          : const [],
     );
   }
 
@@ -85,6 +93,7 @@ class User {
     'isActive': isActive,
     'totalGamesPlayed': totalGamesPlayed,
     'totalMatches': totalMatches,
+    'favoriteCities': favoriteCities,
   };
 
   User copyWith({
@@ -101,6 +110,7 @@ class User {
     bool? isActive,
     int? totalGamesPlayed,
     int? totalMatches,
+    List<String>? favoriteCities,
   }) => User(
     id: id ?? this.id,
     email: email ?? this.email,
@@ -115,5 +125,6 @@ class User {
     isActive: isActive ?? this.isActive,
     totalGamesPlayed: totalGamesPlayed ?? this.totalGamesPlayed,
     totalMatches: totalMatches ?? this.totalMatches,
+    favoriteCities: favoriteCities ?? this.favoriteCities,
   );
 }

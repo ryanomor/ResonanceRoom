@@ -23,13 +23,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final _roomService = RoomService();
   final _matchService = MatchService();
 
-  final List<String> _recentCities = [
-    'New York',
-    'Los Angeles',
-    'Chicago',
-    'Houston',
-    'Miami'
-  ];
   String _selectedCity = 'New York';
   List<Room> _rooms = [];
   int _matchCount = 0;
@@ -115,12 +108,48 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() {
       _selectedCity = selected;
-      final base = selected.split(',').first.trim();
-      _recentCities.removeWhere((c) => c.toLowerCase() == base.toLowerCase());
-      _recentCities.insert(0, base);
-      if (_recentCities.length > 8) _recentCities.removeLast();
     });
     await _loadData();
+  }
+
+  void _showAllFavorites(List<String> favorites) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        final scheme = Theme.of(ctx).colorScheme;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Your Favorite Cities', style: context.textStyles.titleLarge?.semiBold),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: favorites.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (ctx, i) {
+                      final city = favorites[i];
+                      return ListTile(
+                        leading: Icon(Icons.location_on, color: scheme.primary),
+                        title: Text(city, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        onTap: () {
+                          setState(() => _selectedCity = city);
+                          Navigator.of(ctx).pop();
+                          _loadData();
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -184,6 +213,22 @@ class _HomeScreenState extends State<HomeScreen> {
                         icon: const Icon(Icons.search),
                         label: const Text('Search'),
                       ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        tooltip: isFavorited(auth)
+                            ? 'Unfavorite city'
+                            : 'Favorite city',
+                        onPressed: () async {
+                          await context.read<AuthService>().toggleFavoriteCity(_selectedCity);
+                          if (mounted) setState(() {});
+                        },
+                        icon: Icon(
+                          isFavorited(auth) ? Icons.favorite : Icons.favorite_border,
+                          color: isFavorited(auth)
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -196,31 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: _recentCities
-                          .map((city) => Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: ChoiceChip(
-                                  label: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 4),
-                                    child: Text(city,
-                                        overflow: TextOverflow.ellipsis),
-                                  ),
-                                  selected: _selectedCity
-                                          .split(',')
-                                          .first
-                                          .trim()
-                                          .toLowerCase() ==
-                                      city.toLowerCase(),
-                                  onSelected: (selected) {
-                                    if (selected) {
-                                      setState(() => _selectedCity = city);
-                                      _loadData();
-                                    }
-                                  },
-                                ),
-                              ))
-                          .toList(),
+                      children: _buildFavoriteChips(auth),
                     ),
                   ),
                 ],
@@ -272,6 +293,48 @@ class _HomeScreenState extends State<HomeScreen> {
         label: const Text('Host Game'),
       ),
     );
+  }
+
+  bool isFavorited(AuthService auth) => auth.isCityFavorited(_selectedCity);
+
+  List<Widget> _buildFavoriteChips(AuthService auth) {
+    final favorites = auth.currentUser?.favoriteCities ?? const [];
+    final visible = favorites.take(3).toList();
+    final chips = <Widget>[];
+    for (final city in visible) {
+      chips.add(Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: ChoiceChip(
+          label: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Text(city, overflow: TextOverflow.ellipsis),
+          ),
+          selected: _selectedCity.split(',').first.trim().toLowerCase() == city.toLowerCase(),
+          onSelected: (selected) {
+            if (selected) {
+              setState(() => _selectedCity = city);
+              _loadData();
+            }
+          },
+        ),
+      ));
+    }
+    if ((favorites.length) > 3) {
+      chips.add(
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: ActionChip(
+            avatar: const Icon(Icons.list, size: 16),
+            label: const Text('View all'),
+            onPressed: () => _showAllFavorites(favorites),
+          ),
+        ),
+      );
+    }
+    if (chips.isEmpty) {
+      chips.add(Text('No favorite cities yet', style: context.textStyles.bodySmall?.withColor(Theme.of(context).colorScheme.onSurfaceVariant)));
+    }
+    return chips;
   }
 }
 
