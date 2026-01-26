@@ -25,6 +25,32 @@ service cloud.firestore {
         (getMatch(matchId).data.user1Id == request.auth.uid || getMatch(matchId).data.user2Id == request.auth.uid);
     }
 
+    match /{collectionId}/{docId} {
+      allow create: if request.auth != null
+        && (collectionId in [
+          'users','questions','rooms','gameSessions','roomParticipants',
+          'userAnswers','userSelections','matches','chatMessages'
+        ])
+        && request.resource.data.demo == true
+        && request.resource.data.createdBy == request.auth.uid;
+
+      allow update, delete: if request.auth != null
+        && (collectionId in [
+          'users','questions','rooms','gameSessions','roomParticipants',
+          'userAnswers','userSelections','matches','chatMessages'
+        ])
+        && resource.data.demo == true
+        && resource.data.createdBy == request.auth.uid;
+    }
+
+    // Allow demo-tagged docs owned by current user (dev only) 
+//    match /{document=**} { 
+//      allow read, write: if request.auth != null && ( 
+//        (request.resource.data.demo == true && request.resource.data.createdBy == request.auth.uid) || 
+//        (resource.data.demo == true && resource.data.createdBy == request.auth.uid) 
+//      );
+//    }
+
     // USERS: each user can read/write only their own profile
     match /users/{userId} {
       allow get: if isSelf(userId);

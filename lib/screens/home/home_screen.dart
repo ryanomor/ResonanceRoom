@@ -63,13 +63,30 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await DemoSeeder().seedNYC();
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Seeded demo data for NYC')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Seeded demo data for NYC')));
     } catch (e) {
       debugPrint('Seeding failed: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Seeding failed')));
+    } finally {
+      await _loadData();
+    }
+  }
+
+  Future<void> _resetDemo() async {
+    setState(() => _isLoading = true);
+    try {
+      await DemoSeeder().resetAndSeedNYC();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reset + reseeded demo data for NYC')));
+    } catch (e) {
+      debugPrint('Reset+seed failed: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Reset failed')));
     } finally {
       await _loadData();
     }
@@ -120,10 +137,13 @@ class _HomeScreenState extends State<HomeScreen> {
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'seed') _seedDemo();
+              if (value == 'reset_seed') _resetDemo();
             },
             itemBuilder: (context) => const [
               PopupMenuItem<String>(
                   value: 'seed', child: Text('Seed Demo Data (NYC)')),
+              PopupMenuItem<String>(
+                  value: 'reset_seed', child: Text('Reset Demo Data')),
             ],
           ),
         ],
@@ -142,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text('Hi, ${auth.currentUser!.username}! 👋',
                       style: context.textStyles.headlineSmall?.bold),
                   const SizedBox(height: 8),
-                  Text('Play a game, find your next match!',
+                  Text('Play trivia, find your next match!',
                       style: context.textStyles.bodyMedium),
                 ],
               ),

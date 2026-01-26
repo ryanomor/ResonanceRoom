@@ -1,12 +1,66 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import 'package:flutter/foundation.dart';
 
 class DemoSeeder {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final fb_auth.FirebaseAuth _auth = fb_auth.FirebaseAuth.instance;
+
+  /// Deletes previously seeded demo data created by the current user and reseeds.
+  Future<void> resetAndSeedNYC() async {
+    await resetNYC();
+    await seedNYC();
+  }
+
+  /// Deletes demo docs created by the current user across known collections
+  /// without touching real user data.
+  Future<void> resetNYC() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+
+    final collections = <String>[
+      'users',
+      'questions',
+      'rooms',
+      'gameSessions',
+      'roomParticipants',
+      'userAnswers',
+      'userSelections',
+      'matches',
+      'chatMessages',
+    ];
+
+    for (final col in collections) {
+      try {
+        final snap = await _db
+            .collection(col)
+            .where('demo', isEqualTo: true)
+            .where('createdBy', isEqualTo: uid)
+            .get();
+        if (snap.docs.isEmpty) continue;
+        final batch = _db.batch();
+        for (final d in snap.docs) {
+          batch.delete(d.reference);
+        }
+        await batch.commit();
+      } catch (e) {
+        debugPrint('Reset demo delete failed for $col: $e');
+      }
+    }
+  }
 
   Future<void> seedNYC() async {
     // Idempotent: if the primary room exists, skip creating duplicates
     final roomId = 'nyc_mixer_1';
     final liveRoomId = 'nyc_mixer_live';
+    final sessionId = 'gs_nyc_live';
+    final uid = _auth.currentUser?.uid;
+
+    // Require sign-in so demo docs carry a valid createdBy and satisfy rules
+    if (uid == null) {
+      debugPrint('Seeding aborted: user is not signed in.');
+      throw Exception('Please sign in before seeding demo data.');
+    }
 
     // Predefined users
     final users = [
@@ -62,7 +116,7 @@ class DemoSeeder {
 
     final now = DateTime.now();
 
-    // Seed users with stable ids
+    // Seed users with stable ids (tag as demo for safe cleanup)
     for (final u in users) {
       final docRef = _db.collection('users').doc(u['id'] as String);
       final exists = await docRef.get();
@@ -80,6 +134,8 @@ class DemoSeeder {
           'isActive': true,
           'totalGamesPlayed': 0,
           'totalMatches': 0,
+          'demo': true,
+          'createdBy': uid,
         });
       }
     }
@@ -148,6 +204,8 @@ class DemoSeeder {
           'difficulty': 'medium',
           'timeLimitSeconds': 30,
           'createdAt': now.toIso8601String(),
+          'demo': true,
+          'createdBy': uid,
         });
       }
     }
@@ -175,6 +233,8 @@ class DemoSeeder {
         'questionIds': ['q1','q2','q3','q4','q5'],
         'venueAddress': null,
         'requiresGenderParity': true,
+        'demo': true,
+        'createdBy': uid,
       });
     }
 
@@ -201,9 +261,10 @@ class DemoSeeder {
         'questionIds': ['q1','q2','q3','q4','q5'],
         'venueAddress': null,
         'requiresGenderParity': true,
+        'demo': true,
+        'createdBy': uid,
       });
 
-      final sessionId = 'gs_nyc_live';
       final sessionDoc = _db.collection('gameSessions').doc(sessionId);
       await sessionDoc.set({
         'id': sessionId,
@@ -216,21 +277,23 @@ class DemoSeeder {
         'createdAt': now.toIso8601String(),
         'updatedAt': now.toIso8601String(),
         'isTest': false,
+        'demo': true,
+        'createdBy': uid,
       });
     }
 
     // Participants for both rooms (paid = approved)
     final participantUserIds = users.map((u) => u['id'] as String).toList();
     for (final rid in [roomId, liveRoomId]) {
-      for (final uid in participantUserIds) {
-        final id = '$rid:$uid';
+      for (final pid in participantUserIds) {
+        final id = '$rid:$pid';
         final docRef = _db.collection('roomParticipants').doc(id);
         final exists = await docRef.get();
         if (!exists.exists) {
           await docRef.set({
             'id': id,
             'roomId': rid,
-            'userId': uid,
+            'userId': pid,
             'status': 'paid',
             'requestedAt': now.subtract(const Duration(minutes: 30)).toIso8601String(),
             'approvedAt': now.subtract(const Duration(minutes: 25)).toIso8601String(),
@@ -239,9 +302,121 @@ class DemoSeeder {
             'score': 0,
             'createdAt': now.toIso8601String(),
             'updatedAt': now.toIso8601String(),
+            'demo': true,
+            'createdBy': uid,
           });
         }
       }
+    }
+
+    // Ensure the currently signed-in user is added to the LIVE room as paid
+    if (uid != null) {
+      final id = '$liveRoomId:$uid';
+      final meRef = _db.collection('roomParticipants').doc(id);
+      final meSnap = await meRef.get();
+      if (!meSnap.exists) {
+        await meRef.set({
+          'id': id,
+          'roomId': liveRoomId,
+          'userId': uid,
+          'status': 'paid',
+          'requestedAt': now.subtract(const Duration(minutes: 2)).toIso8601String(),
+          'approvedAt': now.subtract(const Duration(minutes: 1)).toIso8601String(),
+          'paidAt': now.subtract(const Duration(seconds: 30)).toIso8601String(),
+          'paymentReference': 'demo',
+          'score': 0,
+          'createdAt': now.toIso8601String(),
+          'updatedAt': now.toIso8601String(),
+          'demo': true,
+          'createdBy': uid,
+        });
+      }
+    }
+
+    // Create a starter match with chat messages between current user and Lena
+    if (uid != null) {
+      final matchId = 'm_${uid}_lena_demo';
+      final matchRef = _db.collection('matches').doc(matchId);
+      final exists = await matchRef.get();
+      if (!exists.exists) {
+        await matchRef.set({
+          'id': matchId,
+          'gameSessionId': sessionId,
+          'user1Id': uid.compareTo('u_nyc_lena') < 0 ? uid : 'u_nyc_lena',
+          'user2Id': uid.compareTo('u_nyc_lena') < 0 ? 'u_nyc_lena' : uid,
+          'matchedAt': now.subtract(const Duration(minutes: 5)).toIso8601String(),
+          'expiresAt': now.add(const Duration(hours: 24)).toIso8601String(),
+          'status': 'chatted',
+          'firstChatAt': now.subtract(const Duration(minutes: 4)).toIso8601String(),
+          'demo': true,
+          'createdBy': uid,
+        });
+
+        // Seed initial chat messages
+        final messages = [
+          {
+            'senderId': 'u_nyc_lena',
+            'text': 'Hey there! Ready for some quick questions? 😊',
+            'delta': const Duration(minutes: 4),
+          },
+          {
+            'senderId': uid,
+            'text': 'Absolutely! Let\'s do it.',
+            'delta': const Duration(minutes: 3, seconds: 30),
+          },
+          {
+            'senderId': 'u_nyc_lena',
+            'text': 'Cool — I\'m picking comedy for the first one 😄',
+            'delta': const Duration(minutes: 3),
+          },
+        ];
+
+        for (final m in messages) {
+          final ref = _db.collection('chatMessages').doc();
+          await ref.set({
+            'id': ref.id,
+            'matchId': matchId,
+            'senderId': m['senderId'],
+            'messageText': m['text'],
+            'sentAt': (now.subtract((m['delta'] as Duration))).toIso8601String(),
+            'createdAt': (now.subtract((m['delta'] as Duration))).toIso8601String(),
+            'demo': true,
+            'createdBy': uid,
+          });
+        }
+      }
+    }
+
+    // Example answers for the live session first question
+    // Provide a few participant answers so UI has something to group
+    try {
+      final answerPairs = <Map<String, String>>[
+        {'userId': 'u_nyc_lena', 'opt': 'Comedy'},
+        {'userId': 'u_brooklyn_amy', 'opt': 'Comedy'},
+        {'userId': 'u_brooklyn_mike', 'opt': 'Concert'},
+        {'userId': 'u_queens_sara', 'opt': 'Broadway'},
+      ];
+      if (uid != null) {
+        answerPairs.add({'userId': uid, 'opt': 'Comedy'});
+      }
+      for (final pair in answerPairs) {
+        final aRef = _db.collection('userAnswers').doc('${sessionId}_${pair['userId']}_q1');
+        final aSnap = await aRef.get();
+        if (!aSnap.exists) {
+          await aRef.set({
+            'id': aRef.id,
+            'gameSessionId': sessionId,
+            'userId': pair['userId'],
+            'questionId': 'q1',
+            'selectedOption': pair['opt'],
+            'answeredAt': now.subtract(const Duration(minutes: 2)).toIso8601String(),
+            'demo': true,
+            'createdBy': uid,
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Seeding example answers failed: $e');
     }
   }
 }

@@ -15,15 +15,32 @@ class RoomService {
     }
   }
 
+  /// Normalizes a display city into a metro key for comparison.
+  /// NYC boroughs and common aliases map to a single key: "new york".
+  String _metroKey(String displayCity) {
+    final first = displayCity.split(',').first.trim().toLowerCase();
+    var token = first;
+    if (token.startsWith('the ')) token = token.substring(4); // "The Bronx" -> "bronx"
+    const nyc = {
+      'new york',
+      'new york city',
+      'nyc',
+      'manhattan',
+      'brooklyn',
+      'queens',
+      'bronx',
+      'staten island',
+    };
+    if (nyc.contains(token)) return 'new york';
+    return first;
+  }
+
   Future<List<Room>> getRoomsByCity(String city) async {
     try {
       // Fetch waiting rooms then filter by city (case-insensitive) client-side for now
       final snap = await _db.collection('rooms').where('status', isEqualTo: RoomStatus.waiting.name).get();
-      final queryCity = city.split(',').first.trim().toLowerCase();
-      return snap.docs
-          .map(_fromDoc)
-          .where((room) => room.city.split(',').first.trim().toLowerCase() == queryCity)
-          .toList();
+      final queryKey = _metroKey(city);
+      return snap.docs.map(_fromDoc).where((room) => _metroKey(room.city) == queryKey).toList();
     } catch (e) {
       debugPrint('Failed to get rooms by city: $e');
       return [];
