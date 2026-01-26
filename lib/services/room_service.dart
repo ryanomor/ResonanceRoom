@@ -37,8 +37,11 @@ class RoomService {
 
   Future<List<Room>> getRoomsByCity(String city) async {
     try {
-      // Fetch waiting rooms then filter by city (case-insensitive) client-side for now
-      final snap = await _db.collection('rooms').where('status', isEqualTo: RoomStatus.waiting.name).get();
+      // Fetch rooms that are either waiting or in progress, then filter by city (case-insensitive)
+      final snap = await _db
+          .collection('rooms')
+          .where('status', whereIn: [RoomStatus.waiting.name, RoomStatus.inProgress.name])
+          .get();
       final queryKey = _metroKey(city);
       return snap.docs.map(_fromDoc).where((room) => _metroKey(room.city) == queryKey).toList();
     } catch (e) {
