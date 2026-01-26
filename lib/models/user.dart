@@ -15,6 +15,8 @@ class User {
   final int totalGamesPlayed;
   final int totalMatches;
   final List<String> favoriteCities;
+  final DateTime? lastNotificationsSeenAt;
+  final List<String> dismissedNotificationIds;
 
   User({
     required this.id,
@@ -31,6 +33,8 @@ class User {
     this.totalGamesPlayed = 0,
     this.totalMatches = 0,
     this.favoriteCities = const [],
+    this.lastNotificationsSeenAt,
+    this.dismissedNotificationIds = const [],
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -76,6 +80,15 @@ class User {
               .map((e) => e.toString())
               .toList()
           : const [],
+      lastNotificationsSeenAt: (json['lastNotificationsSeenAt'] as String?) != null
+          ? DateTime.tryParse(json['lastNotificationsSeenAt'] as String)
+          : null,
+      dismissedNotificationIds: (json['dismissedNotificationIds'] is List)
+          ? (json['dismissedNotificationIds'] as List)
+              .whereType<dynamic>()
+              .map((e) => e.toString())
+              .toList()
+          : const [],
     );
   }
 
@@ -94,6 +107,8 @@ class User {
     'totalGamesPlayed': totalGamesPlayed,
     'totalMatches': totalMatches,
     'favoriteCities': favoriteCities,
+    'lastNotificationsSeenAt': lastNotificationsSeenAt?.toIso8601String(),
+    'dismissedNotificationIds': dismissedNotificationIds,
   };
 
   User copyWith({
@@ -111,6 +126,8 @@ class User {
     int? totalGamesPlayed,
     int? totalMatches,
     List<String>? favoriteCities,
+    DateTime? lastNotificationsSeenAt,
+    List<String>? dismissedNotificationIds,
   }) => User(
     id: id ?? this.id,
     email: email ?? this.email,
@@ -126,5 +143,7 @@ class User {
     totalGamesPlayed: totalGamesPlayed ?? this.totalGamesPlayed,
     totalMatches: totalMatches ?? this.totalMatches,
     favoriteCities: favoriteCities ?? this.favoriteCities,
+    lastNotificationsSeenAt: lastNotificationsSeenAt ?? this.lastNotificationsSeenAt,
+    dismissedNotificationIds: dismissedNotificationIds ?? this.dismissedNotificationIds,
   );
 }

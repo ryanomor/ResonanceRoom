@@ -53,6 +53,39 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Mark notifications as seen by setting lastNotificationsSeenAt to now and persisting.
+  Future<void> markNotificationsSeenNow() async {
+    final user = _currentUser;
+    if (user == null) return;
+    try {
+      final now = DateTime.now();
+      final updated = user.copyWith(lastNotificationsSeenAt: now, updatedAt: now);
+      await _userService.updateUser(updated);
+      _currentUser = updated;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('markNotificationsSeenNow failed: $e');
+    }
+  }
+
+  /// Dismiss a specific notification id for current user and persist.
+  Future<void> dismissNotification(String id) async {
+    final user = _currentUser;
+    if (user == null) return;
+    try {
+      if (user.dismissedNotificationIds.contains(id)) return;
+      final updated = user.copyWith(
+        dismissedNotificationIds: [...user.dismissedNotificationIds, id],
+        updatedAt: DateTime.now(),
+      );
+      await _userService.updateUser(updated);
+      _currentUser = updated;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('dismissNotification failed: $e');
+    }
+  }
+
   Future<bool> signUp({
     required String email,
     required String password,

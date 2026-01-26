@@ -54,6 +54,13 @@ class UserService {
               .map((e) => e.toString())
               .toList()
           : const [],
+      lastNotificationsSeenAt: parseNullableDate(data['lastNotificationsSeenAt']),
+      dismissedNotificationIds: (data['dismissedNotificationIds'] is List)
+          ? (data['dismissedNotificationIds'] as List)
+              .whereType<dynamic>()
+              .map((e) => e.toString())
+              .toList()
+          : const [],
     );
   }
 
@@ -90,6 +97,9 @@ class UserService {
       if (user.lastLoginAt != null) {
         data['lastLoginAt'] = Timestamp.fromDate(user.lastLoginAt!);
       }
+      if (user.lastNotificationsSeenAt != null) {
+        data['lastNotificationsSeenAt'] = Timestamp.fromDate(user.lastNotificationsSeenAt!);
+      }
 
       await _db.collection(_collection).doc(user.id).set(data, SetOptions(merge: false));
     } catch (e) {
@@ -105,6 +115,9 @@ class UserService {
       data['updatedAt'] = Timestamp.fromDate(user.updatedAt);
       if (user.lastLoginAt != null) {
         data['lastLoginAt'] = Timestamp.fromDate(user.lastLoginAt!);
+      }
+      if (user.lastNotificationsSeenAt != null) {
+        data['lastNotificationsSeenAt'] = Timestamp.fromDate(user.lastNotificationsSeenAt!);
       }
 
       await _db.collection(_collection).doc(user.id).update(data);

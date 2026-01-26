@@ -41,6 +41,19 @@ class RoomParticipantService {
     }
   }
 
+  Future<List<RoomParticipant>> getParticipantsByUser(String userId) async {
+    try {
+      final snap = await _db
+          .collection('roomParticipants')
+          .where('userId', isEqualTo: userId)
+          .get();
+      return snap.docs.map(_fromDoc).toList();
+    } catch (e) {
+      debugPrint('Failed to get participants for user $userId: $e');
+      return [];
+    }
+  }
+
   Future<RoomParticipant?> getParticipant(String roomId, String userId) async {
     try {
       final id = '${roomId}:${userId}';

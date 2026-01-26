@@ -9,6 +9,7 @@ import 'package:echomatch/screens/game/game_screen.dart';
 import 'package:echomatch/screens/matches/matches_screen.dart';
 import 'package:echomatch/screens/profile/profile_screen.dart';
 import 'package:echomatch/screens/chat/chat_screen.dart';
+import 'package:echomatch/screens/notifications/notifications_screen.dart';
 import 'package:echomatch/widgets/main_shell.dart';
 
 class AppRouter {
@@ -68,6 +69,11 @@ class AppRouter {
             pageBuilder: (context, state) => const NoTransitionPage(child: MatchesScreen()),
           ),
           GoRoute(
+            path: AppRoutes.notifications,
+            name: 'notifications',
+            pageBuilder: (context, state) => const NoTransitionPage(child: NotificationsScreen()),
+          ),
+          GoRoute(
             path: AppRoutes.profile,
             name: 'profile',
             pageBuilder: (context, state) => const NoTransitionPage(child: ProfileScreen()),
@@ -95,6 +101,7 @@ class AppRoutes {
   static const String roomDetail = '/room';
   static const String game = '/game';
   static const String matches = '/matches';
+  static const String notifications = '/notifications';
   static const String profile = '/profile';
   static const String chat = '/chat';
 }
