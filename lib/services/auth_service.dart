@@ -96,6 +96,7 @@ class AuthService extends ChangeNotifier {
         gender: gender,
         createdAt: now,
         updatedAt: now,
+        lastLoginAt: now,
       );
 
       await _userService.createUser(newUser);
@@ -131,8 +132,8 @@ class AuthService extends ChangeNotifier {
 
       // Load profile; in case of missing profile, create a minimal one
       var profile = await _userService.getUserById(fbUser.uid);
+      final now = DateTime.now();
       if (profile == null) {
-        final now = DateTime.now();
         profile = User(
           id: fbUser.uid,
           email: fbUser.email ?? email,
@@ -142,8 +143,13 @@ class AuthService extends ChangeNotifier {
           gender: Gender.male,
           createdAt: now,
           updatedAt: now,
+          lastLoginAt: now,
         );
         await _userService.createUser(profile);
+      } else {
+        // Update last login timestamp
+        await _userService.updateLastLogin(fbUser.uid, now);
+        profile = profile.copyWith(lastLoginAt: now, updatedAt: now);
       }
 
       _currentUser = profile;
@@ -187,6 +193,54 @@ class AuthService extends ChangeNotifier {
       debugPrint('Update profile failed: $e');
       _error = e.toString();
       notifyListeners();
+    }
+  }
+
+  Future<bool> deleteAccount() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final fbUser = _auth.currentUser;
+      final uid = fbUser?.uid;
+      if (fbUser == null || uid == null) {
+        _error = 'No authenticated user';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Delete Firestore user first (best-effort)
+      try {
+        await _userService.deleteUser(uid);
+      } catch (e) {
+        debugPrint('Warning: failed to delete user doc $uid before auth delete: $e');
+      }
+
+      // Delete auth user (may require recent login)
+      await fbUser.delete();
+
+      _currentUser = null;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on fb_auth.FirebaseAuthException catch (e) {
+      debugPrint('Delete account failed: ${e.code} - ${e.message}');
+      if (e.code == 'requires-recent-login') {
+        _error = 'Please sign in again to delete your account.';
+      } else {
+        _error = e.message ?? 'Failed to delete account';
+      }
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      debugPrint('Delete account exception: $e');
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 

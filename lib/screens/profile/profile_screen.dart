@@ -19,6 +19,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) context.go('/login');
   }
 
+  Future<void> _confirmDelete() async {
+    final auth = context.read<AuthService>();
+    final theme = Theme.of(context);
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Icon(Icons.delete_forever_rounded, color: theme.colorScheme.error),
+                const SizedBox(width: 12),
+                Text('Delete account?', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+              ]),
+              const SizedBox(height: 12),
+              Text(
+                'This action is permanent. Your profile, matches, and chats will be removed. You can\'t undo this.',
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 20),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    icon: Icon(Icons.close_rounded, color: theme.colorScheme.primary),
+                    label: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(backgroundColor: theme.colorScheme.error, foregroundColor: Colors.white),
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    label: const Text('Delete'),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 6),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      final ok = await auth.deleteAccount();
+      if (!mounted) return;
+      if (ok) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account deleted')));
+        context.go('/login');
+      } else {
+        final err = auth.error ?? 'Failed to delete account';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+      }
+    }
+  }
+
   Future<void> _editCity(User user) async {
     final selected = await CityPickerSheet.show(context, initialQuery: user.city.split(',').first.trim());
     if (!mounted || selected == null) return;
@@ -99,6 +162,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 backgroundColor: Theme.of(context).colorScheme.error,
                 foregroundColor: Colors.white,
               ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: auth.isLoading ? null : _confirmDelete,
+              icon: Icon(Icons.delete_forever, color: Theme.of(context).colorScheme.error),
+              label: Text('Delete Account', style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ),
           ],
         ),

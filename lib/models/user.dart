@@ -10,6 +10,7 @@ class User {
   final Gender gender;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final DateTime? lastLoginAt;
   final bool isActive;
   final int totalGamesPlayed;
   final int totalMatches;
@@ -24,6 +25,7 @@ class User {
     required this.gender,
     required this.createdAt,
     required this.updatedAt,
+    this.lastLoginAt,
     this.isActive = true,
     this.totalGamesPlayed = 0,
     this.totalMatches = 0,
@@ -60,6 +62,9 @@ class User {
       gender: parsedGender,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
+      lastLoginAt: (json['lastLoginAt'] as String?) != null
+          ? DateTime.parse(json['lastLoginAt'] as String)
+          : null,
       isActive: json['isActive'] as bool? ?? true,
       totalGamesPlayed: json['totalGamesPlayed'] as int? ?? 0,
       totalMatches: json['totalMatches'] as int? ?? 0,
@@ -76,6 +81,7 @@ class User {
     'gender': gender.name,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
+    'lastLoginAt': lastLoginAt?.toIso8601String(),
     'isActive': isActive,
     'totalGamesPlayed': totalGamesPlayed,
     'totalMatches': totalMatches,
@@ -91,6 +97,7 @@ class User {
     Gender? gender,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? lastLoginAt,
     bool? isActive,
     int? totalGamesPlayed,
     int? totalMatches,
@@ -104,6 +111,7 @@ class User {
     gender: gender ?? this.gender,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    lastLoginAt: lastLoginAt ?? this.lastLoginAt,
     isActive: isActive ?? this.isActive,
     totalGamesPlayed: totalGamesPlayed ?? this.totalGamesPlayed,
     totalMatches: totalMatches ?? this.totalMatches,

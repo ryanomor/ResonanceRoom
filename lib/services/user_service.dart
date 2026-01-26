@@ -15,6 +15,13 @@ class UserService {
       return DateTime.now();
     }
 
+    DateTime? parseNullableDate(dynamic v) {
+      if (v == null) return null;
+      if (v is Timestamp) return v.toDate();
+      if (v is String) return DateTime.tryParse(v);
+      return null;
+    }
+
     Gender parseGender(dynamic v) {
       if (v is String) {
         final name = v.toLowerCase();
@@ -37,6 +44,7 @@ class UserService {
       gender: parseGender(data['gender']),
       createdAt: parseDate(data['createdAt']),
       updatedAt: parseDate(data['updatedAt']),
+      lastLoginAt: parseNullableDate(data['lastLoginAt']),
       isActive: (data['isActive'] as bool?) ?? true,
       totalGamesPlayed: (data['totalGamesPlayed'] as num?)?.toInt() ?? 0,
       totalMatches: (data['totalMatches'] as num?)?.toInt() ?? 0,
@@ -73,6 +81,9 @@ class UserService {
       final data = Map<String, dynamic>.from(user.toJson());
       data['createdAt'] = Timestamp.fromDate(user.createdAt);
       data['updatedAt'] = Timestamp.fromDate(user.updatedAt);
+      if (user.lastLoginAt != null) {
+        data['lastLoginAt'] = Timestamp.fromDate(user.lastLoginAt!);
+      }
 
       await _db.collection(_collection).doc(user.id).set(data, SetOptions(merge: false));
     } catch (e) {
@@ -86,10 +97,35 @@ class UserService {
     try {
       final data = Map<String, dynamic>.from(user.toJson());
       data['updatedAt'] = Timestamp.fromDate(user.updatedAt);
+      if (user.lastLoginAt != null) {
+        data['lastLoginAt'] = Timestamp.fromDate(user.lastLoginAt!);
+      }
 
       await _db.collection(_collection).doc(user.id).update(data);
     } catch (e) {
       debugPrint('Failed to update user ${user.id}: $e');
+      rethrow;
+    }
+  }
+
+  /// Update only lastLoginAt field.
+  Future<void> updateLastLogin(String userId, DateTime when) async {
+    try {
+      await _db.collection(_collection).doc(userId).update({
+        'lastLoginAt': Timestamp.fromDate(when),
+        'updatedAt': Timestamp.fromDate(when),
+      });
+    } catch (e) {
+      debugPrint('Failed to update lastLoginAt for $userId: $e');
+    }
+  }
+
+  /// Delete a user document.
+  Future<void> deleteUser(String userId) async {
+    try {
+      await _db.collection(_collection).doc(userId).delete();
+    } catch (e) {
+      debugPrint('Failed to delete user $userId: $e');
       rethrow;
     }
   }
