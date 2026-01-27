@@ -1,10 +1,13 @@
 enum ParticipantStatus { pending, approved, rejected, paid, inGame }
 
+enum ParticipantRole { player, host }
+
 class RoomParticipant {
   final String id;
   final String roomId;
   final String userId;
   final ParticipantStatus status;
+  final ParticipantRole role;
   final DateTime requestedAt;
   final DateTime? approvedAt;
   final DateTime? paidAt;
@@ -18,6 +21,7 @@ class RoomParticipant {
     required this.roomId,
     required this.userId,
     this.status = ParticipantStatus.pending,
+    this.role = ParticipantRole.player,
     required this.requestedAt,
     this.approvedAt,
     this.paidAt,
@@ -32,6 +36,7 @@ class RoomParticipant {
     roomId: json['roomId'] as String,
     userId: json['userId'] as String,
     status: ParticipantStatus.values.firstWhere((e) => e.name == json['status'], orElse: () => ParticipantStatus.pending),
+    role: ParticipantRole.values.firstWhere((e) => e.name == (json['role'] as String? ?? 'player'), orElse: () => ParticipantRole.player),
     requestedAt: DateTime.parse(json['requestedAt'] as String),
     approvedAt: json['approvedAt'] != null ? DateTime.parse(json['approvedAt'] as String) : null,
     paidAt: json['paidAt'] != null ? DateTime.parse(json['paidAt'] as String) : null,
@@ -46,6 +51,7 @@ class RoomParticipant {
     'roomId': roomId,
     'userId': userId,
     'status': status.name,
+    'role': role.name,
     'requestedAt': requestedAt.toIso8601String(),
     'approvedAt': approvedAt?.toIso8601String(),
     'paidAt': paidAt?.toIso8601String(),
@@ -60,6 +66,7 @@ class RoomParticipant {
     String? roomId,
     String? userId,
     ParticipantStatus? status,
+    ParticipantRole? role,
     DateTime? requestedAt,
     DateTime? approvedAt,
     DateTime? paidAt,
@@ -72,6 +79,7 @@ class RoomParticipant {
     roomId: roomId ?? this.roomId,
     userId: userId ?? this.userId,
     status: status ?? this.status,
+    role: role ?? this.role,
     requestedAt: requestedAt ?? this.requestedAt,
     approvedAt: approvedAt ?? this.approvedAt,
     paidAt: paidAt ?? this.paidAt,

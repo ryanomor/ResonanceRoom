@@ -81,6 +81,16 @@ class GameService extends ChangeNotifier {
   Future<void> submitAnswer(String userId, String selectedOption) async {
     if (_currentSession == null || _currentSession!.currentQuestionId == null) return;
 
+    try {
+      final room = await RoomService().getRoomById(_currentSession!.roomId);
+      if (room != null && room.hostId == userId) {
+        debugPrint('Host attempted to submit an answer; ignoring.');
+        return;
+      }
+    } catch (e) {
+      debugPrint('submitAnswer host check failed: $e');
+    }
+
     final answer = UserAnswer(
       id: const Uuid().v4(),
       gameSessionId: _currentSession!.id,

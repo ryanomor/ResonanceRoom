@@ -175,7 +175,7 @@ class QuestionView extends StatelessWidget {
           ...question.options.map((option) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: ElevatedButton(
-              onPressed: selectedAnswer == null ? () => onAnswer(option) : null,
+              onPressed: (!isHost && selectedAnswer == null) ? () => onAnswer(option) : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: selectedAnswer == option ? Theme.of(context).colorScheme.primaryContainer : null,
                 padding: const EdgeInsets.all(20),
@@ -293,7 +293,7 @@ class _SelectionViewState extends State<SelectionView> {
                               title: Text(user.username),
                               subtitle: Text(user.bio ?? '@${user.username}'),
                               trailing: isSelected ? const Icon(Icons.check_circle, color: Colors.green) : const Icon(Icons.circle_outlined),
-                              onTap: _submitted ? null : () => _toggleSelection(userId),
+                              onTap: (_submitted || widget.isHost) ? null : () => _toggleSelection(userId),
                             ),
                           );
                         },
@@ -302,7 +302,7 @@ class _SelectionViewState extends State<SelectionView> {
                   ),
           ),
           const SizedBox(height: 16),
-          if (!_submitted)
+          if (!_submitted && !widget.isHost)
             ElevatedButton(
               onPressed: _submitSelections,
               child: Text(_selectedUsers.isEmpty ? 'Skip' : 'Submit (${_selectedUsers.length} selected)')),

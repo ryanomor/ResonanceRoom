@@ -122,6 +122,7 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
       id: const Uuid().v4(),
       roomId: _room!.id,
       userId: _authService.currentUser!.id,
+      role: ParticipantRole.player,
       requestedAt: now,
       createdAt: now,
       updatedAt: now,
@@ -196,7 +197,7 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
     }
 
     final isHost = _authService.currentUser?.id == _room!.hostId;
-    final canStart = isHost && _participants.isNotEmpty && _room!.status == RoomStatus.waiting;
+    final canStart = isHost && _room!.status == RoomStatus.waiting;
 
     return Scaffold(
       appBar: AppBar(

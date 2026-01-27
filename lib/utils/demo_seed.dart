@@ -216,7 +216,7 @@ class DemoSeeder {
     if (!roomExists.exists) {
       await roomDoc.set({
         'id': roomId,
-        'hostId': 'u_nyc_lena',
+        'hostId': uid,
         'city': 'New York, New York, United States',
         'title': 'NYC EchoMatch Mixer',
         'description': 'A quick-fire mini game to find great vibes near you.',
@@ -244,7 +244,7 @@ class DemoSeeder {
     if (!liveRoomSnap.exists) {
       await liveRoomDoc.set({
         'id': liveRoomId,
-        'hostId': 'u_nyc_lena',
+        'hostId': uid,
         'city': 'New York, New York, United States',
         'title': 'NYC Live Game',
         'description': 'Jump in to test the full flow now.',
@@ -295,6 +295,7 @@ class DemoSeeder {
             'roomId': rid,
             'userId': pid,
             'status': 'paid',
+            'role': 'player',
             'requestedAt': now.subtract(const Duration(minutes: 30)).toIso8601String(),
             'approvedAt': now.subtract(const Duration(minutes: 25)).toIso8601String(),
             'paidAt': now.subtract(const Duration(minutes: 20)).toIso8601String(),
@@ -320,6 +321,7 @@ class DemoSeeder {
           'roomId': liveRoomId,
           'userId': uid,
           'status': 'paid',
+          'role': 'host',
           'requestedAt': now.subtract(const Duration(minutes: 2)).toIso8601String(),
           'approvedAt': now.subtract(const Duration(minutes: 1)).toIso8601String(),
           'paidAt': now.subtract(const Duration(seconds: 30)).toIso8601String(),
@@ -330,61 +332,51 @@ class DemoSeeder {
           'demo': true,
           'createdBy': uid,
         });
+      } else {
+        // Ensure role is set to host for current user
+        await meRef.set({'role': 'host', 'updatedAt': now.toIso8601String()}, SetOptions(merge: true));
       }
     }
 
-    // Create a starter match with chat messages between current user and Lena
-    if (uid != null) {
-      final matchId = 'm_${uid}_lena_demo';
-      final matchRef = _db.collection('matches').doc(matchId);
-      final exists = await matchRef.get();
-      if (!exists.exists) {
-        await matchRef.set({
-          'id': matchId,
-          'gameSessionId': sessionId,
-          'user1Id': uid.compareTo('u_nyc_lena') < 0 ? uid : 'u_nyc_lena',
-          'user2Id': uid.compareTo('u_nyc_lena') < 0 ? 'u_nyc_lena' : uid,
-          'matchedAt': now.subtract(const Duration(minutes: 5)).toIso8601String(),
-          'expiresAt': now.add(const Duration(hours: 24)).toIso8601String(),
-          'status': 'chatted',
-          'firstChatAt': now.subtract(const Duration(minutes: 4)).toIso8601String(),
-          'demo': true,
-          'createdBy': uid,
-        });
+    // Seed matches BETWEEN demo users only (exclude current signed-in host)
+    // These represent matches formed after the demo game ends.
+    try {
+      final demoPairs = <List<String>>[
+        ['u_brooklyn_amy', 'u_brooklyn_mike'],
+        ['u_queens_sara', 'u_queens_jay'],
+        ['u_nyc_lena', 'u_nyc_omar'],
+      ];
 
-        // Seed initial chat messages
-        final messages = [
-          {
-            'senderId': 'u_nyc_lena',
-            'text': 'Hey there! Ready for some quick questions? 😊',
-            'delta': const Duration(minutes: 4),
-          },
-          {
-            'senderId': uid,
-            'text': 'Absolutely! Let\'s do it.',
-            'delta': const Duration(minutes: 3, seconds: 30),
-          },
-          {
-            'senderId': 'u_nyc_lena',
-            'text': 'Cool — I\'m picking comedy for the first one 😄',
-            'delta': const Duration(minutes: 3),
-          },
-        ];
-
-        for (final m in messages) {
-          final ref = _db.collection('chatMessages').doc();
-          await ref.set({
-            'id': ref.id,
-            'matchId': matchId,
-            'senderId': m['senderId'],
-            'messageText': m['text'],
-            'sentAt': (now.subtract((m['delta'] as Duration))).toIso8601String(),
-            'createdAt': (now.subtract((m['delta'] as Duration))).toIso8601String(),
+      for (int i = 0; i < demoPairs.length; i++) {
+        final a = demoPairs[i][0];
+        final b = demoPairs[i][1];
+        // Sort ids to maintain a consistent user1/user2 ordering
+        final user1 = a.compareTo(b) < 0 ? a : b;
+        final user2 = a.compareTo(b) < 0 ? b : a;
+        final matchId = 'm_${user1}_${user2}_$sessionId';
+        final matchRef = _db.collection('matches').doc(matchId);
+        final snap = await matchRef.get();
+        if (!snap.exists) {
+          final matchedAt = now.subtract(Duration(minutes: 1, seconds: i * 20));
+          final data = {
+            'id': matchId,
+            'gameSessionId': sessionId,
+            'user1Id': user1,
+            'user2Id': user2,
+            'matchedAt': matchedAt.toIso8601String(),
+            'expiresAt': now.add(const Duration(hours: 24)).toIso8601String(),
+            'status': i == 0 ? 'chatted' : 'active',
+            'firstChatAt': i == 0 ? matchedAt.add(const Duration(seconds: 30)).toIso8601String() : null,
             'demo': true,
             'createdBy': uid,
-          });
+          };
+          // Remove nulls for Firestore clean write
+          data.removeWhere((k, v) => v == null);
+          await matchRef.set(data);
         }
       }
+    } catch (e) {
+      debugPrint('Seeding demo-only matches failed: $e');
     }
 
     // Example answers for the live session first question
@@ -396,9 +388,7 @@ class DemoSeeder {
         {'userId': 'u_brooklyn_mike', 'opt': 'Concert'},
         {'userId': 'u_queens_sara', 'opt': 'Broadway'},
       ];
-      if (uid != null) {
-        answerPairs.add({'userId': uid, 'opt': 'Comedy'});
-      }
+      // Do not add the current signed-in host to answers
       for (final pair in answerPairs) {
         final aRef = _db.collection('userAnswers').doc('${sessionId}_${pair['userId']}_q1');
         final aSnap = await aRef.get();

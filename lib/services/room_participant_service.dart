@@ -34,7 +34,9 @@ class RoomParticipantService {
           .where('roomId', isEqualTo: roomId)
           .where('status', whereIn: [ParticipantStatus.paid.name, ParticipantStatus.inGame.name])
           .get();
-      return snap.docs.map(_fromDoc).toList();
+      final all = snap.docs.map(_fromDoc).toList();
+      // Exclude hosts from approved participants
+      return all.where((p) => p.role == ParticipantRole.player).toList();
     } catch (e) {
       debugPrint('Failed to get approved for room $roomId: $e');
       return [];
@@ -106,6 +108,7 @@ class RoomParticipantService {
       'roomId': d['roomId'],
       'userId': d['userId'],
       'status': d['status'],
+      'role': d['role'] ?? 'player',
       'requestedAt': _dateToIso(d['requestedAt']),
       'approvedAt': d['approvedAt'] != null ? _dateToIso(d['approvedAt']) : null,
       'paidAt': d['paidAt'] != null ? _dateToIso(d['paidAt']) : null,
@@ -122,6 +125,7 @@ class RoomParticipantService {
         'roomId': p.roomId,
         'userId': p.userId,
         'status': p.status.name,
+        'role': p.role.name,
         'requestedAt': p.requestedAt.toIso8601String(),
         'approvedAt': p.approvedAt?.toIso8601String(),
         'paidAt': p.paidAt?.toIso8601String(),
