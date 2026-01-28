@@ -379,14 +379,15 @@ class DemoSeeder {
       debugPrint('Seeding demo-only matches failed: $e');
     }
 
-    // Example answers for the live session first question
+    // Example answers for the live session first question (q1)
     // Provide a few participant answers so UI has something to group
     try {
+      // q1 options: ['Museum day', 'Hiking', 'Cooking class', 'Beach hang']
       final answerPairs = <Map<String, String>>[
-        {'userId': 'u_nyc_lena', 'opt': 'Comedy'},
-        {'userId': 'u_brooklyn_amy', 'opt': 'Comedy'},
-        {'userId': 'u_brooklyn_mike', 'opt': 'Concert'},
-        {'userId': 'u_queens_sara', 'opt': 'Broadway'},
+        {'userId': 'u_nyc_lena', 'opt': 'Museum day'},
+        {'userId': 'u_brooklyn_amy', 'opt': 'Museum day'},
+        {'userId': 'u_brooklyn_mike', 'opt': 'Hiking'},
+        {'userId': 'u_queens_sara', 'opt': 'Cooking class'},
       ];
       // Do not add the current signed-in host to answers
       for (final pair in answerPairs) {

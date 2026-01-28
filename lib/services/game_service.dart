@@ -20,6 +20,42 @@ class GameService extends ChangeNotifier {
   Map<String, String> get currentRoundAnswers => _currentRoundAnswers;
   Set<String> get currentRoundSelections => _currentRoundSelections;
 
+  // Returns a stream of the unique answer count for the current question in the active session
+  Stream<int> answeredCountStream() {
+    if (_currentSession == null || _currentSession!.currentQuestionId == null) {
+      return const Stream<int>.empty();
+    }
+    final sessionId = _currentSession!.id;
+    final questionId = _currentSession!.currentQuestionId!;
+    return _db
+        .collection('userAnswers')
+        .where('gameSessionId', isEqualTo: sessionId)
+        .where('questionId', isEqualTo: questionId)
+        .snapshots()
+        .map((snap) {
+      final ids = <String>{};
+      for (final d in snap.docs) {
+        final data = d.data();
+        final uid = data['userId'] as String?;
+        if (uid != null) ids.add(uid);
+      }
+      return ids.length;
+    });
+  }
+
+  // Returns the number of expected participants (players only, excludes hosts) for the current room
+  Future<int> expectedParticipantsCount() async {
+    if (_currentSession == null) return 0;
+    try {
+      final roomId = _currentSession!.roomId;
+      final players = await RoomParticipantService().getApprovedParticipants(roomId);
+      return players.length;
+    } catch (e) {
+      debugPrint('expectedParticipantsCount error: $e');
+      return 0;
+    }
+  }
+
   Future<GameSession> createGameSession(String roomId, int questionCount, {bool isTest = false}) async {
     final questionService = QuestionService();
     final room = await RoomService().getRoomById(roomId);
@@ -76,6 +112,8 @@ class GameService extends ChangeNotifier {
     _currentRoundAnswers = {};
     await _saveSession(_currentSession!);
     notifyListeners();
+    // After recording an answer, check if everyone has answered and move to selection if so
+    await _checkAndStartSelectionIfReady();
   }
 
   Future<void> submitAnswer(String userId, String selectedOption) async {

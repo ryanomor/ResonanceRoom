@@ -118,6 +118,7 @@ class _GameScreenState extends State<GameScreen> {
               onHostEndRound: () async {
                 await _gameService.endQuestionByHost();
               },
+              gameService: _gameService,
             );
           } else if (session.gameState == GameState.selection) {
             return SelectionView(
@@ -156,8 +157,9 @@ class QuestionView extends StatelessWidget {
   final bool isHost;
   final bool hasAnswered;
   final VoidCallback? onHostEndRound;
+  final GameService? gameService;
 
-  const QuestionView({super.key, required this.question, this.selectedAnswer, required this.onAnswer, required this.questionNumber, required this.totalQuestions, this.isHost = false, this.hasAnswered = false, this.onHostEndRound});
+  const QuestionView({super.key, required this.question, this.selectedAnswer, required this.onAnswer, required this.questionNumber, required this.totalQuestions, this.isHost = false, this.hasAnswered = false, this.onHostEndRound, this.gameService});
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +171,25 @@ class QuestionView extends StatelessWidget {
           LinearProgressIndicator(value: questionNumber / totalQuestions),
           const SizedBox(height: 24),
           Text('Question $questionNumber of $totalQuestions', style: context.textStyles.titleMedium?.withColor(Theme.of(context).colorScheme.primary)),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
+          if (isHost && gameService != null)
+            FutureBuilder<int>(
+              future: gameService!.expectedParticipantsCount(),
+              builder: (context, totalSnap) {
+                final total = totalSnap.data ?? 0;
+                return StreamBuilder<int>(
+                  stream: gameService!.answeredCountStream(),
+                  builder: (context, ansSnap) {
+                    final answered = ansSnap.data ?? 0;
+                    return Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Answered: $answered / $total', style: context.textStyles.bodyMedium?.semiBold),
+                    );
+                  },
+                );
+              },
+            ),
+          const SizedBox(height: 16),
           Text(question.questionText, style: context.textStyles.headlineMedium?.semiBold),
           const SizedBox(height: 40),
           ...question.options.map((option) => Padding(
@@ -262,6 +282,73 @@ class _SelectionViewState extends State<SelectionView> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.isHost) {
+      // Host view: grouped answers by option
+      return Padding(
+        padding: AppSpacing.paddingLg,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('🧭 Host overview', style: context.textStyles.titleLarge?.semiBold),
+            const SizedBox(height: 8),
+            Text('Answers grouped by option', style: context.textStyles.bodyMedium),
+            const SizedBox(height: 16),
+            Expanded(
+              child: FutureBuilder<Map<String, List<String>>>(
+                future: widget.gameService.getUsersByAnswer(),
+                builder: (context, snapshot) {
+                  final data = snapshot.data ?? {};
+                  if (data.isEmpty) return const Center(child: Text('No answers yet'));
+                  final entries = data.entries.toList()
+                    ..sort((a, b) => a.key.compareTo(b.key));
+                  return ListView.builder(
+                    itemCount: entries.length,
+                    itemBuilder: (context, index) {
+                      final option = entries[index].key;
+                      final userIds = entries[index].value;
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(option, style: context.textStyles.titleMedium?.semiBold),
+                              const SizedBox(height: 8),
+                              ...userIds.map((uid) => FutureBuilder(
+                                future: widget.userService.getUserById(uid),
+                                builder: (context, snap) {
+                                  final user = snap.data;
+                                  if (user == null) return const SizedBox.shrink();
+                                  return ListTile(
+                                    dense: true,
+                                    leading: CircleAvatar(child: Text(user.username.isNotEmpty ? user.username[0] : '?')),
+                                    title: Text(user.username),
+                                    subtitle: Text('@${user.username}'),
+                                  );
+                                },
+                              )),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: widget.onComplete,
+              icon: const Icon(Icons.playlist_add_check_circle, color: Colors.white),
+              label: const Text('Close selection and go to next question'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Player view
     return Padding(
       padding: AppSpacing.paddingLg,
       child: Column(
@@ -310,15 +397,6 @@ class _SelectionViewState extends State<SelectionView> {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text('Selections submitted. Waiting for host to continue…', style: context.textStyles.bodyMedium),
-            ),
-          if (widget.isHost)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: ElevatedButton.icon(
-                onPressed: widget.onComplete,
-                icon: const Icon(Icons.playlist_add_check_circle, color: Colors.white),
-                label: const Text('Close selection and go to next question'),
-              ),
             ),
         ],
       ),
