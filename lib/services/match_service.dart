@@ -32,8 +32,8 @@ class MatchService extends ChangeNotifier {
           final match = Match(
             id: const Uuid().v4(),
             gameSessionId: selections.first.gameSessionId,
-            user1Id: userA.compareTo(userB) < 0 ? userA : userB,
-            user2Id: userA.compareTo(userB) < 0 ? userB : userA,
+            uid1: userA.compareTo(userB) < 0 ? userA : userB,
+            uid2: userA.compareTo(userB) < 0 ? userB : userA,
             matchedAt: now,
             expiresAt: now.add(const Duration(hours: 24)),
             status: MatchStatus.active,
@@ -53,8 +53,8 @@ class MatchService extends ChangeNotifier {
 
   Future<List<Match>> getUserMatches(String userId) async {
     try {
-      final q1 = await _db.collection('matches').where('user1Id', isEqualTo: userId).get();
-      final q2 = await _db.collection('matches').where('user2Id', isEqualTo: userId).get();
+      final q1 = await _db.collection('matches').where('uid1', isEqualTo: userId).get();
+      final q2 = await _db.collection('matches').where('uid2', isEqualTo: userId).get();
       final all = [...q1.docs, ...q2.docs].map(_fromDoc).toList();
       final now = DateTime.now();
       final result = <Match>[];
@@ -112,8 +112,8 @@ class MatchService extends ChangeNotifier {
     final json = {
       'id': d['id'] ?? doc.id,
       'gameSessionId': d['gameSessionId'],
-      'user1Id': d['user1Id'],
-      'user2Id': d['user2Id'],
+      'uid1': d['uid1'],
+      'uid2': d['uid2'],
       'matchedAt': _dateToIso(d['matchedAt']),
       'expiresAt': _dateToIso(d['expiresAt']),
       'status': d['status'],
@@ -125,8 +125,8 @@ class MatchService extends ChangeNotifier {
   Map<String, dynamic> _toMap(Match m) => {
         'id': m.id,
         'gameSessionId': m.gameSessionId,
-        'user1Id': m.user1Id,
-        'user2Id': m.user2Id,
+        'uid1': m.uid1,
+        'uid2': m.uid2,
         'matchedAt': m.matchedAt.toIso8601String(),
         'expiresAt': m.expiresAt.toIso8601String(),
         'status': m.status.name,

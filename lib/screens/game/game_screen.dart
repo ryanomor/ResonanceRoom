@@ -80,7 +80,7 @@ class _GameScreenState extends State<GameScreen> {
     if (!mounted) return;
     
     if (matches.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('🎉 You have ${matches.where((m) => m.user1Id == _authService.currentUser!.id || m.user2Id == _authService.currentUser!.id).length} new matches!')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('🎉 You have ${matches.where((m) => m.uid1 == _authService.currentUser!.id || m.uid2 == _authService.currentUser!.id).length} new matches!')));
     }
     
     context.go('/matches');

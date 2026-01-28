@@ -361,8 +361,8 @@ class DemoSeeder {
           final data = {
             'id': matchId,
             'gameSessionId': sessionId,
-            'user1Id': user1,
-            'user2Id': user2,
+            'uid1': user1,
+            'uid2': user2,
             'matchedAt': matchedAt.toIso8601String(),
             'expiresAt': now.add(const Duration(hours: 24)).toIso8601String(),
             'status': i == 0 ? 'chatted' : 'active',
