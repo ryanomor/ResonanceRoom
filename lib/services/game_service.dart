@@ -13,11 +13,11 @@ class GameService extends ChangeNotifier {
   final _db = FirebaseFirestore.instance;
 
   GameSession? _currentSession;
-  Map<String, String> _currentRoundAnswers = {};
+  Map<String, int> _currentRoundAnswers = {};
   Set<String> _currentRoundSelections = {};
 
   GameSession? get currentSession => _currentSession;
-  Map<String, String> get currentRoundAnswers => _currentRoundAnswers;
+  Map<String, int> get currentRoundAnswers => _currentRoundAnswers;
   Set<String> get currentRoundSelections => _currentRoundSelections;
 
   // Returns a stream of the unique answer count for the current question in the active session
@@ -113,10 +113,10 @@ class GameService extends ChangeNotifier {
     await _saveSession(_currentSession!);
     notifyListeners();
     // After recording an answer, check if everyone has answered and move to selection if so
-    await _checkAndStartSelectionIfReady();
+    // await _checkAndStartSelectionIfReady();
   }
 
-  Future<void> submitAnswer(String userId, String selectedOption) async {
+  Future<void> submitAnswer(String userId, int selectedOption) async {
     if (_currentSession == null || _currentSession!.currentQuestionId == null) return;
 
     try {
@@ -142,7 +142,7 @@ class GameService extends ChangeNotifier {
     _currentRoundAnswers[userId] = selectedOption;
     notifyListeners();
     // After recording an answer, check if everyone has answered and move to selection if so
-    await _checkAndStartSelectionIfReady();
+    // await _checkAndStartSelectionIfReady();
   }
 
   Future<void> startSelection() async {
@@ -187,11 +187,11 @@ class GameService extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, List<String>>> getUsersByAnswer() async {
+  Future<Map<int, List<String>>> getUsersByAnswer() async {
     if (_currentSession == null) return {};
 
     final answers = await _getAnswersForQuestion(_currentSession!.id, _currentSession!.currentQuestionId!);
-    final groupedUsers = <String, List<String>>{};
+    final groupedUsers = <int, List<String>>{};
 
     for (final answer in answers) {
       groupedUsers.putIfAbsent(answer.selectedOption, () => []).add(answer.userId);
@@ -318,12 +318,14 @@ class GameService extends ChangeNotifier {
 
   UserAnswer _fromAnswerDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data() ?? {};
+    final rawSel = d['selectedOption'];
+    final selIndex = rawSel is int ? rawSel : int.tryParse(rawSel?.toString() ?? '') ?? 0;
     final json = {
       'id': d['id'] ?? doc.id,
       'gameSessionId': d['gameSessionId'],
       'userId': d['userId'],
       'questionId': d['questionId'],
-      'selectedOption': d['selectedOption'],
+      'selectedOption': selIndex,
       'answeredAt': _dateToIso(d['answeredAt']),
     };
     return UserAnswer.fromJson(json);

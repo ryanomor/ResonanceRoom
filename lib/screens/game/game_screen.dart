@@ -29,7 +29,7 @@ class _GameScreenState extends State<GameScreen> {
   final _matchService = MatchService();
   
   Question? _currentQuestion;
-  String? _selectedAnswer;
+  int? _selectedAnswer;
   bool _hasAnswered = false;
   Room? _room;
 
@@ -53,15 +53,15 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  Future<void> _submitAnswer(String answer) async {
+  Future<void> _submitAnswer(int answerIndex) async {
     if (_hasAnswered) return;
     
     setState(() {
-      _selectedAnswer = answer;
+      _selectedAnswer = answerIndex;
       _hasAnswered = true;
     });
 
-    await _gameService.submitAnswer(_authService.currentUser!.id, answer);
+    await _gameService.submitAnswer(_authService.currentUser!.id, answerIndex);
     // Do not auto-open selection. It will open when all have answered or host ends the round.
   }
 
@@ -150,8 +150,8 @@ class _GameScreenState extends State<GameScreen> {
 
 class QuestionView extends StatelessWidget {
   final Question question;
-  final String? selectedAnswer;
-  final Function(String) onAnswer;
+  final int? selectedAnswer;
+  final Function(int) onAnswer;
   final int questionNumber;
   final int totalQuestions;
   final bool isHost;
@@ -192,18 +192,18 @@ class QuestionView extends StatelessWidget {
           const SizedBox(height: 16),
           Text(question.questionText, style: context.textStyles.headlineMedium?.semiBold),
           const SizedBox(height: 40),
-          ...question.options.map((option) => Padding(
+          ...question.options.asMap().entries.map((entry) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: ElevatedButton(
-              onPressed: (!isHost && selectedAnswer == null) ? () => onAnswer(option) : null,
+              onPressed: (!isHost && selectedAnswer == null) ? () => onAnswer(entry.key) : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: selectedAnswer == option ? Theme.of(context).colorScheme.primaryContainer : null,
+                backgroundColor: selectedAnswer == entry.key ? Theme.of(context).colorScheme.primaryContainer : null,
                 padding: const EdgeInsets.all(20),
               ),
               child: Builder(builder: (context) {
-                final isSelected = selectedAnswer == option;
+                final isSelected = selectedAnswer == entry.key;
                 final selectedColor = Theme.of(context).colorScheme.onPrimaryContainer;
-                return Text(option, style: isSelected ? context.textStyles.bodyLarge?.withColor(selectedColor) : context.textStyles.bodyLarge);
+                return Text(entry.value, style: isSelected ? context.textStyles.bodyLarge?.withColor(selectedColor) : context.textStyles.bodyLarge);
               }),
             ),
           )),
@@ -283,7 +283,9 @@ class _SelectionViewState extends State<SelectionView> {
   @override
   Widget build(BuildContext context) {
     if (widget.isHost) {
-      // Host view: grouped answers by option
+      // Host view: grouped answers by option index -> label via question
+      final questionId = widget.gameService.currentSession?.currentQuestionId;
+      final questionFuture = questionId != null ? QuestionService().getQuestionById(questionId) : Future<Question?>.value(null);
       return Padding(
         padding: AppSpacing.paddingLg,
         child: Column(
@@ -294,43 +296,51 @@ class _SelectionViewState extends State<SelectionView> {
             Text('Answers grouped by option', style: context.textStyles.bodyMedium),
             const SizedBox(height: 16),
             Expanded(
-              child: FutureBuilder<Map<String, List<String>>>(
-                future: widget.gameService.getUsersByAnswer(),
-                builder: (context, snapshot) {
-                  final data = snapshot.data ?? {};
-                  if (data.isEmpty) return const Center(child: Text('No answers yet'));
-                  final entries = data.entries.toList()
-                    ..sort((a, b) => a.key.compareTo(b.key));
-                  return ListView.builder(
-                    itemCount: entries.length,
-                    itemBuilder: (context, index) {
-                      final option = entries[index].key;
-                      final userIds = entries[index].value;
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(option, style: context.textStyles.titleMedium?.semiBold),
-                              const SizedBox(height: 8),
-                              ...userIds.map((uid) => FutureBuilder(
-                                future: widget.userService.getUserById(uid),
-                                builder: (context, snap) {
-                                  final user = snap.data;
-                                  if (user == null) return const SizedBox.shrink();
-                                  return ListTile(
-                                    dense: true,
-                                    leading: CircleAvatar(child: Text(user.username.isNotEmpty ? user.username[0] : '?')),
-                                    title: Text(user.username),
-                                    subtitle: Text('@${user.username}'),
-                                  );
-                                },
-                              )),
-                            ],
-                          ),
-                        ),
+              child: FutureBuilder<Question?>(
+                future: questionFuture,
+                builder: (context, qSnap) {
+                  final q = qSnap.data;
+                  return FutureBuilder<Map<int, List<String>>>(
+                    future: widget.gameService.getUsersByAnswer(),
+                    builder: (context, snapshot) {
+                      final data = snapshot.data ?? {};
+                      if (data.isEmpty) return const Center(child: Text('No answers yet'));
+                      final entries = data.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+                      return ListView.builder(
+                        itemCount: entries.length,
+                        itemBuilder: (context, index) {
+                          final optionIndex = entries[index].key;
+                          final userIds = entries[index].value;
+                          final optionLabel = (q != null && optionIndex >= 0 && optionIndex < q.options.length)
+                              ? q.options[optionIndex]
+                              : 'Option #${optionIndex + 1}';
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(optionLabel, style: context.textStyles.titleMedium?.semiBold),
+                                  const SizedBox(height: 8),
+                                  ...userIds.map((uid) => FutureBuilder(
+                                    future: widget.userService.getUserById(uid),
+                                    builder: (context, snap) {
+                                      final user = snap.data;
+                                      if (user == null) return const SizedBox.shrink();
+                                      return ListTile(
+                                        dense: true,
+                                        leading: CircleAvatar(child: Text(user.username.isNotEmpty ? user.username[0] : '?')),
+                                        title: Text(user.username),
+                                        subtitle: Text('@${user.username}'),
+                                      );
+                                    },
+                                  )),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
                   );

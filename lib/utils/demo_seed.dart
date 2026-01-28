@@ -383,11 +383,13 @@ class DemoSeeder {
     // Provide a few participant answers so UI has something to group
     try {
       // q1 options: ['Museum day', 'Hiking', 'Cooking class', 'Beach hang']
-      final answerPairs = <Map<String, String>>[
-        {'userId': 'u_nyc_lena', 'opt': 'Museum day'},
-        {'userId': 'u_brooklyn_amy', 'opt': 'Museum day'},
-        {'userId': 'u_brooklyn_mike', 'opt': 'Hiking'},
-        {'userId': 'u_queens_sara', 'opt': 'Cooking class'},
+      final answerPairs = <Map<String, dynamic>>[
+        {'userId': 'u_nyc_lena', 'optIndex': 0},
+        {'userId': 'u_brooklyn_amy', 'optIndex': 1},
+        {'userId': 'u_brooklyn_mike', 'optIndex': 1},
+        {'userId': 'u_queens_sara', 'optIndex': 2},
+        {'userId': 'u_nyc_omar', 'optIndex': 2},
+        {'userId': 'u_queens_jay', 'optIndex': 0},
       ];
       // Do not add the current signed-in host to answers
       for (final pair in answerPairs) {
@@ -399,7 +401,7 @@ class DemoSeeder {
             'gameSessionId': sessionId,
             'userId': pair['userId'],
             'questionId': 'q1',
-            'selectedOption': pair['opt'],
+            'selectedOption': pair['optIndex'],
             'answeredAt': now.subtract(const Duration(minutes: 2)).toIso8601String(),
             'demo': true,
             'createdBy': uid,

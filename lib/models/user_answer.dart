@@ -3,7 +3,7 @@ class UserAnswer {
   final String gameSessionId;
   final String userId;
   final String questionId;
-  final String selectedOption;
+  final int selectedOption;
   final DateTime answeredAt;
 
   UserAnswer({
@@ -20,7 +20,9 @@ class UserAnswer {
     gameSessionId: json['gameSessionId'] as String,
     userId: json['userId'] as String,
     questionId: json['questionId'] as String,
-    selectedOption: json['selectedOption'] as String,
+    selectedOption: json['selectedOption'] is int
+        ? json['selectedOption'] as int
+        : int.tryParse(json['selectedOption']?.toString() ?? '') ?? 0,
     answeredAt: DateTime.parse(json['answeredAt'] as String),
   );
 
@@ -38,7 +40,7 @@ class UserAnswer {
     String? gameSessionId,
     String? userId,
     String? questionId,
-    String? selectedOption,
+    int? selectedOption,
     DateTime? answeredAt,
   }) => UserAnswer(
     id: id ?? this.id,
