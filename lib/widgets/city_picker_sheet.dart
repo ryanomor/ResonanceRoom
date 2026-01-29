@@ -1,25 +1,24 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:echomatch/theme.dart';
-import 'package:echomatch/services/city_validation_service.dart';
+import 'package:echomatch/services/city_catalog_service.dart';
 import 'package:go_router/go_router.dart';
 
-/// A bottom sheet that lets users search for a city and returns a normalized
-/// city display name (e.g. "Austin, Texas, United States").
-///
-/// It queries OpenStreetMap Nominatim via [CityValidationService].
+/// A bottom sheet that lets users pick a city from an offline list for a given
+/// country. Returns only the city name (e.g., "Austin").
 class CityPickerSheet extends StatefulWidget {
   final String? initialQuery;
+  final String defaultCountryCode; // ISO2 (e.g., US, GB, CA)
 
-  const CityPickerSheet({super.key, this.initialQuery});
+  const CityPickerSheet({super.key, this.initialQuery, this.defaultCountryCode = 'US'});
 
-  static Future<String?> show(BuildContext context, {String? initialQuery}) => showModalBottomSheet<String>(
+  static Future<String?> show(BuildContext context, {String? initialQuery, String defaultCountryCode = 'US'}) => showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
     useSafeArea: true,
     backgroundColor: Theme.of(context).colorScheme.surface,
-    builder: (_) => CityPickerSheet(initialQuery: initialQuery),
+    builder: (_) => CityPickerSheet(initialQuery: initialQuery, defaultCountryCode: defaultCountryCode),
   );
 
   @override
@@ -29,8 +28,9 @@ class CityPickerSheet extends StatefulWidget {
 class _CityPickerSheetState extends State<CityPickerSheet> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
-  final _service = CityValidationService();
+  final _catalog = CityCatalogService();
 
+  List<String> _allCities = const [];
   List<String> _suggestions = const [];
   String? _selected;
   bool _loading = false;
@@ -40,10 +40,42 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
   @override
   void initState() {
     super.initState();
+    _loadCities();
     if (widget.initialQuery != null && widget.initialQuery!.trim().isNotEmpty) {
       _controller.text = widget.initialQuery!.trim();
-      _scheduleSearch();
+      _scheduleFilter();
     }
+  }
+
+  Future<void> _loadCities() async {
+    setState(() => _loading = true);
+    try {
+      final cities = await _catalog.getCitiesByCountryCode(widget.defaultCountryCode);
+      if (!mounted) return;
+      setState(() {
+        _allCities = cities;
+        _suggestions = _filter(_controller.text, cities);
+      });
+    } catch (e) {
+      debugPrint('City catalog load failed: $e');
+      if (!mounted) return;
+      setState(() => _error = 'Could not load city list');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  List<String> _filter(String input, List<String> source) {
+    final q = input.trim().toLowerCase();
+    if (q.isEmpty) return source.take(30).toList(); // show some popular entries
+    return source.where((c) => c.toLowerCase().contains(q)).take(50).toList();
+  }
+
+  void _scheduleFilter() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 200), () {
+      setState(() => _suggestions = _filter(_controller.text, _allCities));
+    });
   }
 
   @override
@@ -54,51 +86,10 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
     super.dispose();
   }
 
-  void _scheduleSearch() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () async {
-      final query = _controller.text.trim();
-      if (query.length < 2) {
-        setState(() {
-          _suggestions = const [];
-          _loading = false;
-          _error = null;
-          _selected = null;
-        });
-        return;
-      }
-      setState(() {
-        _loading = true;
-        _error = null;
-        _selected = null;
-      });
-      try {
-        final results = await _service.searchCities(query, originCity: widget.initialQuery);
-        setState(() => _suggestions = results);
-      } catch (e) {
-        debugPrint('City search failed: $e');
-        setState(() => _error = 'Could not fetch suggestions. Please try again.');
-      } finally {
-        if (mounted) setState(() => _loading = false);
-      }
-    });
-  }
-
   Future<void> _useCity() async {
     final chosen = _selected ?? _controller.text.trim();
     if (chosen.isEmpty) return;
-    setState(() => _loading = true);
-    try {
-      final normalized = await _service.validateAndNormalizeCity(chosen);
-      if (!mounted) return;
-      context.pop(normalized ?? chosen);
-    } catch (e) {
-      debugPrint('City validation failed: $e');
-      if (!mounted) return;
-      context.pop(chosen);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    context.pop(chosen);
   }
 
   @override
@@ -114,36 +105,26 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
           children: [
             Text('Select your city', style: context.textStyles.titleLarge?.bold),
             const SizedBox(height: 8),
-            Text('Search for a city by name', style: context.textStyles.bodyMedium?.withColor(cs.onSurfaceVariant)),
+            Text('Scoped to ${widget.defaultCountryCode} • type to filter', style: context.textStyles.bodyMedium?.withColor(cs.onSurfaceVariant)),
             const SizedBox(height: 16),
             Container(
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(14),
-              ),
+              decoration: BoxDecoration(color: cs.surfaceContainerHighest, borderRadius: BorderRadius.circular(14)),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(children: [
-                Icon(Icons.search, color: cs.primary),
+                Icon(Icons.location_city, color: cs.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _controller,
                     focusNode: _focusNode,
-                    onChanged: (_) => _scheduleSearch(),
-                    decoration: const InputDecoration(
-                      hintText: 'Type a city (e.g., Austin, TX or London)',
-                      border: InputBorder.none,
-                    ),
+                    onChanged: (_) => _scheduleFilter(),
+                    decoration: const InputDecoration(hintText: 'Start typing your city', border: InputBorder.none),
                   ),
                 ),
                 if (_loading)
                   Padding(
                     padding: const EdgeInsets.only(left: 8),
-                    child: SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary),
-                    ),
+                    child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary)),
                   )
                 else if (_controller.text.isNotEmpty)
                   IconButton(
@@ -151,7 +132,7 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
                     onPressed: () {
                       _controller.clear();
                       setState(() {
-                        _suggestions = const [];
+                        _suggestions = _filter('', _allCities);
                         _selected = null;
                       });
                       _focusNode.requestFocus();
@@ -161,17 +142,16 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
               ]),
             ),
             const SizedBox(height: 12),
-            if (_error != null)
-              Text(_error!, style: context.textStyles.bodyMedium?.withColor(cs.error)),
+            if (_error != null) Text(_error!, style: context.textStyles.bodyMedium?.withColor(cs.error)),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
               child: _suggestions.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text('Suggestions will appear here', style: context.textStyles.labelSmall?.withColor(cs.onSurfaceVariant)),
+                      child: Text(_allCities.isEmpty ? 'Loading cities…' : 'No matches', style: context.textStyles.labelSmall?.withColor(cs.onSurfaceVariant)),
                     )
                   : SizedBox(
-                      height: 280,
+                      height: 300,
                       child: ListView.separated(
                         itemCount: _suggestions.length,
                         separatorBuilder: (_, __) => Divider(height: 1, color: cs.outline.withValues(alpha: 0.2)),

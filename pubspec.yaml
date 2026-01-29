@@ -7,6 +7,7 @@ environment:
   sdk: ^3.6.0
 
 dependencies:
+  flutter_country_state: ^1.0.0
   location_picker_flutter_map: ^4.0.0
   firebase_auth: '>=5.3.3'
   cloud_firestore: '>=5.5.0'
