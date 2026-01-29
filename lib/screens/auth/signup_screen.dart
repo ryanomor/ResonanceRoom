@@ -4,6 +4,7 @@ import 'package:echomatch/services/auth_service.dart';
 import 'package:echomatch/models/user.dart';
 import 'package:echomatch/theme.dart';
 import 'package:provider/provider.dart';
+import 'package:echomatch/widgets/city_picker_sheet.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -17,7 +18,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _usernameController = TextEditingController();
-  final _cityController = TextEditingController();
+  String? _selectedCity;
   bool _isLoading = false;
   Gender? _selectedGender;
 
@@ -26,7 +27,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _usernameController.dispose();
-    _cityController.dispose();
     super.dispose();
   }
 
@@ -36,11 +36,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() => _isLoading = true);
 
     final auth = context.read<AuthService>();
+    if (_selectedGender == null || (_selectedCity == null || _selectedCity!.trim().isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select your city and gender')));
+      setState(() => _isLoading = false);
+      return;
+    }
+
     final success = await auth.signUp(
       email: _emailController.text.trim(),
       password: _passwordController.text,
       username: _usernameController.text.trim(),
-      city: _cityController.text.trim(),
+      city: _selectedCity!.trim(),
       gender: _selectedGender!,
     );
 
@@ -100,13 +106,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      controller: _cityController,
-                      decoration: const InputDecoration(labelText: 'City', prefixIcon: Icon(Icons.location_city_outlined), border: OutlineInputBorder(), hintText: 'e.g., Austin or Austin, TX'),
-                      validator: (value) {
-                        final v = value?.trim() ?? '';
-                        if (v.isEmpty) return 'Please enter your city';
-                        if (v.length < 2) return 'Please enter a valid city';
-                        return null;
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        labelText: 'City',
+                        prefixIcon: const Icon(Icons.location_city_outlined),
+                        border: const OutlineInputBorder(),
+                        hintText: 'Select your city',
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.edit_location_alt),
+                          onPressed: () async {
+                            final picked = await CityPickerSheet.show(context, initialQuery: _selectedCity);
+                            if (picked != null && mounted) setState(() => _selectedCity = picked);
+                          },
+                        ),
+                      ),
+                      controller: TextEditingController(text: _selectedCity ?? ''),
+                      onTap: () async {
+                        final picked = await CityPickerSheet.show(context, initialQuery: _selectedCity);
+                        if (picked != null && mounted) setState(() => _selectedCity = picked);
                       },
                     ),
                     const SizedBox(height: 16),

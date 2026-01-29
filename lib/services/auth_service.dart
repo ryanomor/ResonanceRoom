@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:flutter/foundation.dart';
 import 'package:echomatch/models/user.dart';
 import 'package:echomatch/services/user_service.dart';
-import 'package:echomatch/services/city_validation_service.dart';
 
 class AuthService extends ChangeNotifier {
   final fb_auth.FirebaseAuth _auth = fb_auth.FirebaseAuth.instance;
@@ -99,10 +98,10 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Validate city
-      final normalizedCity = await CityValidationService().validateAndNormalizeCity(city);
-      if (normalizedCity == null) {
-        _error = 'Please enter a valid city (e.g., "Austin" or "Austin, TX")';
+      // City is now chosen via local picker; just sanitize a bit
+      final normalizedCity = city.trim();
+      if (normalizedCity.isEmpty) {
+        _error = 'Please select your city';
         _isLoading = false;
         notifyListeners();
         return false;

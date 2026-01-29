@@ -10,7 +10,7 @@ import 'package:echomatch/nav.dart';
 import 'package:provider/provider.dart';
 import 'package:echomatch/widgets/city_picker_sheet.dart';
 import 'package:echomatch/models/question.dart';
-import 'package:echomatch/services/place_validation_service.dart';
+import 'package:location_picker_flutter_map/location_picker_flutter_map.dart';
 import 'dart:math' as math;
 
 class CreateRoomScreen extends StatefulWidget {
@@ -38,6 +38,41 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   bool _isLoading = false;
   bool _isEditing = false;
   Room? _editingRoom;
+  Future<void> _openVenuePicker() async {
+    debugPrint('[CreateRoom] Open venue picker');
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (ctx) {
+        return SizedBox(
+          height: MediaQuery.of(ctx).size.height * 0.75,
+          child: FlutterLocationPicker(
+            initZoom: 11,
+            minZoomLevel: 5,
+            maxZoomLevel: 18,
+            trackMyPosition: false,
+            showSearchBar: true,
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgent: 'EchoMatch/1.0 (Dreamflow Flutter)',
+            onPicked: (pickedData) {
+              try {
+                final address = pickedData.address;
+                debugPrint('[CreateRoom] Picked address: $address');
+                if (mounted) setState(() => _addressController.text = address);
+              } catch (e) {
+                debugPrint('[CreateRoom] onPicked error: $e');
+              } finally {
+                Navigator.of(ctx).pop();
+              }
+            },
+          ),
+        );
+      },
+    );
+  }
 
   // Helper to surface errors and always reset loading
   void _fail(String message) {
@@ -116,16 +151,9 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         return _fail('Participants must be an even number.');
       }
 
-      // Venue address validation
+      // Venue address (picked via OSM location picker)
       final rawAddress = _addressController.text.trim();
-      if (rawAddress.isEmpty) {
-        return _fail('Please enter the venue address');
-      }
-      debugPrint('[CreateRoom] validating address "$rawAddress" in city "${_selectedCity!}"');
-      final normalizedAddress = await PlaceValidationService.validateAddressInCity(address: rawAddress, cityDisplayName: _selectedCity!);
-      if (normalizedAddress == null) {
-        return _fail('Enter a real address within the selected city');
-      }
+      if (rawAddress.isEmpty) return _fail('Please choose the venue location');
 
       // Duration and questions minimums
       final minQuestions = _recommendedQuestions(_maxParticipants);
@@ -154,7 +182,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         createdAt: now,
         updatedAt: now,
         questionIds: _selectedQuestions.map((q) => q.id).toList(),
-        venueAddress: normalizedAddress,
+        venueAddress: rawAddress,
         requiresGenderParity: true,
       );
 
@@ -415,13 +443,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
       }
 
       final rawAddress = _addressController.text.trim();
-      if (rawAddress.isEmpty) {
-        return _fail('Please enter the venue address');
-      }
-      final normalizedAddress = await PlaceValidationService.validateAddressInCity(address: rawAddress, cityDisplayName: _selectedCity!);
-      if (normalizedAddress == null) {
-        return _fail('Enter a real address within the selected city');
-      }
+      if (rawAddress.isEmpty) return _fail('Please choose the venue location');
 
       final minQuestions = _recommendedQuestions(_maxParticipants);
       final chosenQuestions = _selectedQuestions.length;
@@ -446,7 +468,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         scheduledEnd: end,
         updatedAt: now,
         questionIds: _selectedQuestions.map((q) => q.id).toList(),
-        venueAddress: normalizedAddress,
+        venueAddress: rawAddress,
       );
 
       debugPrint('[EditRoom] updating room ${updated.id}');
@@ -519,8 +541,20 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _addressController,
-                decoration: const InputDecoration(labelText: 'Venue address (street, city, state)', prefixIcon: Icon(Icons.place_outlined), border: OutlineInputBorder()),
-                validator: (value) => value == null || value.trim().isEmpty ? 'Please enter the venue address' : null,
+                readOnly: true,
+                onTap: _openVenuePicker,
+                decoration: InputDecoration(
+                  labelText: 'Venue location',
+                  prefixIcon: const Icon(Icons.place_outlined),
+                  border: const OutlineInputBorder(),
+                  hintText: 'Pick location on map',
+                  suffixIcon: IconButton(
+                    tooltip: 'Pick on map',
+                    icon: const Icon(Icons.map_outlined),
+                    onPressed: _openVenuePicker,
+                  ),
+                ),
+                validator: (value) => value == null || value.trim().isEmpty ? 'Please pick the venue location' : null,
               ),
               const SizedBox(height: 20),
               Text('Maximum Participants (even only, requires gender parity)', style: context.textStyles.titleSmall?.semiBold),
