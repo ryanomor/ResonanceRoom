@@ -19,12 +19,11 @@ class CityCatalogService {
   Future<void> _ensureLoaded() async {
     if (_rawData != null) return;
     final candidateAssets = <String>[
-      // Primary known path used by flutter_country_state
       'packages/flutter_country_state/assets/country_state_city.json',
-      // Possible alternative path if package restructured
       'packages/flutter_country_state/assets/country_state_city.json.json',
     ];
 
+    // Try known candidates first
     for (final path in candidateAssets) {
       try {
         final jsonStr = await rootBundle.loadString(path);
@@ -35,7 +34,6 @@ class CityCatalogService {
           return;
         }
         if (decoded is List) {
-          // Some packages ship the list at top level
           _rawData = {'countries': decoded};
           debugPrint('[CityCatalogService] Loaded city catalog (list) from $path');
           return;
@@ -43,6 +41,45 @@ class CityCatalogService {
       } catch (e) {
         debugPrint('[CityCatalogService] Failed to load $path: $e');
       }
+    }
+
+    // Fallback: scan AssetManifest.json to discover correct path in this environment
+    try {
+      final manifestStr = await rootBundle.loadString('AssetManifest.json');
+      final manifestJson = json.decode(manifestStr);
+      // AssetManifest can be a Map<String, dynamic> or a List depending on tooling
+      Iterable<String> keys;
+      if (manifestJson is Map<String, dynamic>) {
+        keys = manifestJson.keys.cast<String>();
+      } else if (manifestJson is List) {
+        keys = manifestJson.cast<String>();
+      } else {
+        keys = const [];
+      }
+
+      final matches = keys.where((k) => k.contains('packages/flutter_country_state') && k.endsWith('.json')).toList()
+        ..sort((a, b) => a.length.compareTo(b.length)); // prefer shorter, likely canonical path
+
+      for (final path in matches) {
+        try {
+          final jsonStr = await rootBundle.loadString(path);
+          final decoded = json.decode(jsonStr);
+          if (decoded is Map<String, dynamic>) {
+            _rawData = decoded;
+            debugPrint('[CityCatalogService] Loaded city catalog from manifest: $path');
+            return;
+          }
+          if (decoded is List) {
+            _rawData = {'countries': decoded};
+            debugPrint('[CityCatalogService] Loaded city catalog (list) from manifest: $path');
+            return;
+          }
+        } catch (e) {
+          debugPrint('[CityCatalogService] Failed to load manifest candidate $path: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('[CityCatalogService] Could not read AssetManifest.json: $e');
     }
 
     // If still null, keep as null; callers will see empty results
@@ -97,7 +134,6 @@ class CityCatalogService {
       }
     }
 
-    // Deduplicate and sort
     final unique = cities.toSet().toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
     _citiesByIso2[code] = unique;
     debugPrint('[CityCatalogService] Loaded ${unique.length} cities for $code');
