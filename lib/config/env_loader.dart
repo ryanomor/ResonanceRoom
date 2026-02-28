@@ -3,6 +3,21 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform, debugPrint;
 import 'package:firebase_core/firebase_core.dart';
 
+class AppEnv {
+  static String _mapboxToken = '';
+  static String get mapboxToken => _mapboxToken;
+
+  static Future<void> load({String path = 'env/dev.json'}) async {
+    try {
+      final jsonStr = await rootBundle.loadString(path);
+      final data = json.decode(jsonStr) as Map<String, dynamic>;
+      _mapboxToken = (data['MAPBOX_ACCESS_TOKEN'] as String?) ?? '';
+    } catch (e) {
+      debugPrint('AppEnv: failed to load $path: $e');
+    }
+  }
+}
+
 /// Loads FirebaseOptions from an env JSON asset (e.g., env/dev.json).
 /// Returns null if the file is missing or invalid. Errors are logged.
 class FirebaseEnvLoader {

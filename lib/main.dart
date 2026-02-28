@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppEnv.load();
   try {
     final envOptions = await FirebaseEnvLoader.tryLoad();
     if (envOptions != null) {

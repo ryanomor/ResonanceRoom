@@ -1,36 +1,36 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:echomatch/theme.dart';
-import 'package:echomatch/services/city_validation_service.dart';
+import 'package:echomatch/services/venue_search_service.dart';
 import 'package:go_router/go_router.dart';
 
-class CityPickerSheet extends StatefulWidget {
+class VenuePickerSheet extends StatefulWidget {
   final String? initialQuery;
-  final String defaultCountryCode;
+  final String? proximityCity;
 
-  const CityPickerSheet({super.key, this.initialQuery, this.defaultCountryCode = 'US'});
+  const VenuePickerSheet({super.key, this.initialQuery, this.proximityCity});
 
-  static Future<String?> show(BuildContext context, {String? initialQuery, String defaultCountryCode = 'US'}) =>
+  static Future<String?> show(BuildContext context, {String? initialQuery, String? proximityCity}) =>
       showModalBottomSheet<String>(
         context: context,
         isScrollControlled: true,
         showDragHandle: true,
         useSafeArea: true,
         backgroundColor: Theme.of(context).colorScheme.surface,
-        builder: (_) => CityPickerSheet(initialQuery: initialQuery, defaultCountryCode: defaultCountryCode),
+        builder: (_) => VenuePickerSheet(initialQuery: initialQuery, proximityCity: proximityCity),
       );
 
   @override
-  State<CityPickerSheet> createState() => _CityPickerSheetState();
+  State<VenuePickerSheet> createState() => _VenuePickerSheetState();
 }
 
-class _CityPickerSheetState extends State<CityPickerSheet> {
+class _VenuePickerSheetState extends State<VenuePickerSheet> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
-  final _service = CityValidationService();
+  final _service = VenueSearchService();
 
-  List<String> _suggestions = const [];
-  String? _selected;
+  List<VenueSuggestion> _suggestions = const [];
+  VenueSuggestion? _selected;
   bool _loading = false;
   Timer? _debounce;
 
@@ -54,7 +54,7 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
     }
     setState(() => _loading = true);
     _debounce = Timer(const Duration(milliseconds: 300), () async {
-      final results = await _service.searchCities(value.trim());
+      final results = await _service.searchVenues(value.trim(), proximityCity: widget.proximityCity);
       if (!mounted) return;
       setState(() {
         _suggestions = results;
@@ -71,15 +71,17 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
     super.dispose();
   }
 
-  void _useCity() {
-    final chosen = _selected ?? _controller.text.trim();
-    if (chosen.isEmpty) return;
-    context.pop(chosen);
+  void _useVenue() {
+    final address = _selected?.fullAddress ?? _controller.text.trim();
+    if (address.isEmpty) return;
+    context.pop(address);
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final hasSelection = _selected != null || _controller.text.trim().isNotEmpty;
+
     return SafeArea(
       top: false,
       child: Padding(
@@ -93,22 +95,27 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Select your city', style: context.textStyles.titleLarge?.bold),
+            Text('Choose a venue', style: context.textStyles.titleLarge?.bold),
             const SizedBox(height: 8),
-            Text('Type to search cities worldwide', style: context.textStyles.bodyMedium?.withColor(cs.onSurfaceVariant)),
+            Text(
+              widget.proximityCity != null
+                  ? 'Search bars, restaurants, event spaces near ${widget.proximityCity}'
+                  : 'Search for a bar, restaurant, or event space',
+              style: context.textStyles.bodyMedium?.withColor(cs.onSurfaceVariant),
+            ),
             const SizedBox(height: 16),
             Container(
               decoration: BoxDecoration(color: cs.surfaceContainerHighest, borderRadius: BorderRadius.circular(14)),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(children: [
-                Icon(Icons.location_city, color: cs.primary),
+                Icon(Icons.place_outlined, color: cs.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _controller,
                     focusNode: _focusNode,
                     onChanged: _onChanged,
-                    decoration: const InputDecoration(hintText: 'Start typing your city', border: InputBorder.none),
+                    decoration: const InputDecoration(hintText: 'e.g. The Rusty Anchor, 123 Main St', border: InputBorder.none),
                   ),
                 ),
                 if (_loading)
@@ -134,25 +141,35 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
             const SizedBox(height: 12),
             if (_suggestions.isNotEmpty)
               ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 280),
+                constraints: const BoxConstraints(maxHeight: 300),
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: _suggestions.length,
                   separatorBuilder: (_, __) => Divider(height: 1, color: cs.outline.withValues(alpha: 0.2)),
                   itemBuilder: (context, index) {
-                    final s = _suggestions[index];
-                    final parts = s.split(',');
-                    final city = parts.first.trim();
-                    final rest = parts.skip(1).join(',').trim();
-                    final selected = s == _selected;
+                    final v = _suggestions[index];
+                    final isSelected = _selected?.fullAddress == v.fullAddress;
+                    final addressWithoutName = v.fullAddress.startsWith(v.name)
+                        ? v.fullAddress.substring(v.name.length).replaceFirst(RegExp(r'^,\s*'), '')
+                        : v.fullAddress;
                     return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      leading: Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off, color: selected ? cs.primary : cs.onSurfaceVariant),
-                      title: Text(city, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: rest.isNotEmpty ? Text(rest, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textStyles.labelSmall?.withColor(cs.onSurfaceVariant)) : null,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      leading: CircleAvatar(
+                        backgroundColor: isSelected ? cs.primary : cs.surfaceContainerHighest,
+                        radius: 18,
+                        child: Icon(
+                          Icons.place,
+                          color: isSelected ? cs.onPrimary : cs.onSurfaceVariant,
+                          size: 18,
+                        ),
+                      ),
+                      title: Text(v.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textStyles.bodyMedium?.semiBold),
+                      subtitle: addressWithoutName.isNotEmpty
+                          ? Text(addressWithoutName, maxLines: 2, overflow: TextOverflow.ellipsis, style: context.textStyles.labelSmall?.withColor(cs.onSurfaceVariant))
+                          : null,
                       onTap: () => setState(() {
-                        _selected = city;
-                        _controller.text = city;
+                        _selected = v;
+                        _controller.text = v.name;
                       }),
                     );
                   },
@@ -161,17 +178,24 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
             else if (_controller.text.trim().length >= 2 && !_loading)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text('No cities found', style: context.textStyles.labelSmall?.withColor(cs.onSurfaceVariant)),
+                child: Text('No venues found — try a street address', style: context.textStyles.labelSmall?.withColor(cs.onSurfaceVariant)),
               ),
             const SizedBox(height: 12),
-            if (_selected != null || _controller.text.trim().isNotEmpty)
+            if (hasSelection)
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: cs.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
                 child: Row(children: [
-                  Icon(Icons.location_city, color: cs.primary),
+                  Icon(Icons.place, color: cs.primary),
                   const SizedBox(width: 8),
-                  Expanded(child: Text((_selected ?? _controller.text).trim(), maxLines: 2, overflow: TextOverflow.ellipsis)),
+                  Expanded(
+                    child: Text(
+                      _selected?.fullAddress ?? _controller.text.trim(),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.textStyles.bodySmall,
+                    ),
+                  ),
                 ]),
               ),
             const SizedBox(height: 12),
@@ -186,9 +210,9 @@ class _CityPickerSheetState extends State<CityPickerSheet> {
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: (_selected != null || _controller.text.trim().isNotEmpty) && !_loading ? _useCity : null,
+                  onPressed: hasSelection && !_loading ? _useVenue : null,
                   icon: Icon(Icons.check, color: cs.onPrimary),
-                  label: const Text('Use city'),
+                  label: const Text('Use venue'),
                 ),
               ),
             ]),

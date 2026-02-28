@@ -9,8 +9,8 @@ import 'package:echomatch/theme.dart';
 import 'package:echomatch/nav.dart';
 import 'package:provider/provider.dart';
 import 'package:echomatch/widgets/city_picker_sheet.dart';
+import 'package:echomatch/widgets/venue_picker_sheet.dart';
 import 'package:echomatch/models/question.dart';
-import 'package:location_picker_flutter_map/location_picker_flutter_map.dart';
 import 'dart:math' as math;
 
 class CreateRoomScreen extends StatefulWidget {
@@ -40,38 +40,14 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   Room? _editingRoom;
   Future<void> _openVenuePicker() async {
     debugPrint('[CreateRoom] Open venue picker');
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      builder: (ctx) {
-        return SizedBox(
-          height: MediaQuery.of(ctx).size.height * 0.75,
-          child: FlutterLocationPicker(
-            initZoom: 11,
-            minZoomLevel: 5,
-            maxZoomLevel: 18,
-            trackMyPosition: false,
-            showSearchBar: true,
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgent: 'EchoMatch/1.0 (Dreamflow Flutter)',
-            onPicked: (pickedData) {
-              try {
-                final address = pickedData.address;
-                debugPrint('[CreateRoom] Picked address: $address');
-                if (mounted) setState(() => _addressController.text = address);
-              } catch (e) {
-                debugPrint('[CreateRoom] onPicked error: $e');
-              } finally {
-                Navigator.of(ctx).pop();
-              }
-            },
-          ),
-        );
-      },
+    final picked = await VenuePickerSheet.show(
+      context,
+      initialQuery: _addressController.text.isNotEmpty ? _addressController.text : null,
+      proximityCity: _selectedCity,
     );
+    if (picked != null && mounted) {
+      setState(() => _addressController.text = picked);
+    }
   }
 
   // Helper to surface errors and always reset loading
@@ -547,10 +523,10 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                   labelText: 'Venue location',
                   prefixIcon: const Icon(Icons.place_outlined),
                   border: const OutlineInputBorder(),
-                  hintText: 'Pick location on map',
+                  hintText: 'Search for a bar, restaurant, or event space',
                   suffixIcon: IconButton(
-                    tooltip: 'Pick on map',
-                    icon: const Icon(Icons.map_outlined),
+                    tooltip: 'Search venue',
+                    icon: const Icon(Icons.search_outlined),
                     onPressed: _openVenuePicker,
                   ),
                 ),
