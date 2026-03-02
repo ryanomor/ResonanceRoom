@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   ViewStyle,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { useCitySearch, CityResult } from '../../hooks/useCitySearch';
 import { colors, radius, fontSize, spacing } from '../../theme';
@@ -23,8 +24,9 @@ interface Props {
 export function CitySearchInput({ label, value, onSelect, containerStyle, error }: Props) {
   const { results, loading, search, clear } = useCitySearch();
   const [text, setText] = useState(value);
-  const [focused, setFocused] = useState(false);
-  const showDropdown = focused && (results.length > 0 || loading);
+  const [open, setOpen] = useState(false);
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const rowRef = useRef<View>(null);
 
   function handleChange(val: string) {
     setText(val);
@@ -32,23 +34,42 @@ export function CitySearchInput({ label, value, onSelect, containerStyle, error 
     search(val);
   }
 
-  function handleSelect(item: CityResult) {
-    setText(item.displayName);
-    onSelect(item.displayName);
-    clear();
-    setFocused(false);
+  function handleFocus() {
+    rowRef.current?.measureInWindow((x, y, w, h) => {
+      setDropPos({ top: y + h + 4, left: x, width: w });
+    });
+    setOpen(true);
   }
+
+  function handleBlur() {
+    setTimeout(() => {
+      setOpen(false);
+      clear();
+    }, 150);
+  }
+
+  function handleSelect(item: CityResult) {
+    setText(item.name);
+    onSelect(item.name);
+    clear();
+    setOpen(false);
+  }
+
+  const showList = results.length > 0 || loading;
 
   return (
     <View style={[styles.wrapper, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
-      <View style={[styles.inputRow, focused && styles.focused, error ? styles.errorBorder : null]}>
+      <View
+        ref={rowRef}
+        style={[styles.inputRow, open && styles.focused, error ? styles.errorBorder : null]}
+      >
         <TextInput
           style={styles.input}
           value={text}
           onChangeText={handleChange}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setTimeout(() => setFocused(false), 150)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           placeholder="Search city..."
           placeholderTextColor={colors.muted}
           autoCorrect={false}
@@ -57,30 +78,38 @@ export function CitySearchInput({ label, value, onSelect, containerStyle, error 
         {loading && <ActivityIndicator size="small" color={colors.accent} style={styles.spinner} />}
       </View>
       {error && <Text style={styles.errorText}>{error}</Text>}
-      {showDropdown && (
-        <View style={styles.dropdown}>
-          <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled>
-            {results.length === 0 && loading && (
-              <View style={styles.dropdownItem}>
-                <Text style={styles.dropdownMuted}>Searching...</Text>
-              </View>
-            )}
-            {results.map((item, i) => (
-              <TouchableOpacity
-                key={`${item.lat}-${item.lon}-${i}`}
-                style={[styles.dropdownItem, i < results.length - 1 && styles.dropdownDivider]}
-                onPress={() => handleSelect(item)}
-              >
-                <Text style={styles.dropdownPrimary} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text style={styles.dropdownSecondary} numberOfLines={1}>
-                  {item.displayName}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+
+      {open && showList && dropPos && (
+        <Modal visible transparent animationType="none" onRequestClose={() => setOpen(false)}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => { setOpen(false); clear(); }}
+          />
+          <View style={[styles.dropdown, { top: dropPos.top, left: dropPos.left, width: dropPos.width }]}>
+            <FlatList
+              data={loading && results.length === 0 ? [] : results}
+              keyExtractor={(item, i) => `${item.lat}-${item.lon}-${i}`}
+              keyboardShouldPersistTaps="handled"
+              ListEmptyComponent={
+                loading ? (
+                  <View style={styles.item}>
+                    <Text style={styles.muted}>Searching...</Text>
+                  </View>
+                ) : null
+              }
+              renderItem={({ item, index }) => (
+                <TouchableOpacity
+                  style={[styles.item, index < results.length - 1 && styles.divider]}
+                  onPress={() => handleSelect(item)}
+                >
+                  <Text style={styles.primary} numberOfLines={1}>{item.name}</Text>
+                  <Text style={styles.secondary} numberOfLines={1}>{item.displayName}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </Modal>
       )}
     </View>
   );
@@ -115,40 +144,37 @@ const styles = StyleSheet.create({
   errorText: { fontSize: fontSize.xs, color: colors.error, marginTop: 2 },
   dropdown: {
     position: 'absolute',
-    top: 82,
-    left: 0,
-    right: 0,
     backgroundColor: colors.card,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    zIndex: 999,
     maxHeight: 240,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 20,
   },
-  dropdownItem: {
+  item: {
     paddingHorizontal: spacing[4],
     paddingVertical: 12,
   },
-  dropdownDivider: {
+  divider: {
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  dropdownPrimary: {
+  primary: {
     fontSize: fontSize.base,
     fontWeight: '600',
     color: colors.white,
   },
-  dropdownSecondary: {
+  secondary: {
     fontSize: fontSize.xs,
     color: colors.muted,
     marginTop: 2,
   },
-  dropdownMuted: {
+  muted: {
     fontSize: fontSize.sm,
     color: colors.muted,
   },

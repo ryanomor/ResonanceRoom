@@ -12,8 +12,8 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { useRooms } from '../../hooks/useRooms';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
 import { colors, fontSize, spacing, radius } from '../../theme';
+import { CityPickerModal } from './CityPickerModal';
 import type { Room } from '../../types';
 
 function RoomCard({ room, onPress }: { room: Room; onPress: () => void }) {
@@ -61,6 +61,7 @@ export function HomeScreen() {
   const router = useRouter();
   const appUser = useAuthStore((s) => s.appUser);
   const [selectedCity, setSelectedCity] = useState(appUser?.city ?? '');
+  const [cityPickerOpen, setCityPickerOpen] = useState(false);
   const { rooms, loading, refetch } = useRooms(selectedCity);
 
   return (
@@ -72,11 +73,13 @@ export function HomeScreen() {
         </View>
         <TouchableOpacity
           style={styles.cityPill}
-          onPress={() => {
-            // City picker would open here
-          }}
+          onPress={() => setCityPickerOpen(true)}
+          activeOpacity={0.8}
         >
-          <Text style={styles.cityPillText}>{selectedCity || 'All Cities'}</Text>
+          <Text style={styles.cityPillText} numberOfLines={1}>
+            {selectedCity || 'All Cities'}
+          </Text>
+          <Text style={styles.cityPillChevron}>›</Text>
         </TouchableOpacity>
       </View>
 
@@ -123,6 +126,13 @@ export function HomeScreen() {
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
+
+      <CityPickerModal
+        visible={cityPickerOpen}
+        selectedCity={selectedCity}
+        onSelect={setSelectedCity}
+        onClose={() => setCityPickerOpen(false)}
+      />
     </View>
   );
 }
@@ -132,7 +142,7 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: spacing[5],
     paddingTop: Platform.OS === 'ios' ? 56 : spacing[5],
     paddingBottom: spacing[4],
@@ -141,14 +151,19 @@ const styles = StyleSheet.create({
   greeting: { fontSize: fontSize.lg, fontWeight: '800', color: colors.white },
   subGreeting: { fontSize: fontSize.sm, color: colors.muted, marginTop: 2 },
   cityPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: colors.surface,
     borderRadius: radius.full,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderWidth: 1,
     borderColor: colors.border,
+    maxWidth: 160,
   },
-  cityPillText: { fontSize: fontSize.sm, fontWeight: '600', color: colors.offwhite },
+  cityPillText: { fontSize: fontSize.sm, fontWeight: '600', color: colors.offwhite, flex: 1 },
+  cityPillChevron: { fontSize: 18, color: colors.muted, lineHeight: 20 },
   list: { padding: spacing[5], gap: 12, paddingBottom: 100 },
   sectionHeader: { marginBottom: 4 },
   sectionTitle: { fontSize: fontSize.sm, color: colors.muted, fontWeight: '600' },

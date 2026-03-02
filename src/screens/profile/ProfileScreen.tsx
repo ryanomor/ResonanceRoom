@@ -15,6 +15,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { CitySearchInput } from '../../components/ui/CitySearchInput';
 import { colors, fontSize, spacing, radius } from '../../theme';
 
 export function ProfileScreen() {
@@ -70,7 +71,7 @@ export function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.avatarSection}>
           <Avatar name={appUser?.username} size="xl" />
           <Text style={styles.name}>{appUser?.username}</Text>
@@ -88,10 +89,10 @@ export function ProfileScreen() {
               value={username}
               onChangeText={setUsername}
             />
-            <Input
+            <CitySearchInput
               label="City"
               value={city}
-              onChangeText={setCity}
+              onSelect={setCity}
               containerStyle={{ marginTop: 14 }}
             />
             <Input
@@ -146,6 +147,19 @@ export function ProfileScreen() {
             </Text>
           </View>
         </Card>
+
+        {(appUser?.favoriteCities?.length ?? 0) > 0 && (
+          <Card style={styles.favCard}>
+            <Text style={styles.sectionTitle}>Favorite Cities</Text>
+            <View style={styles.favList}>
+              {appUser!.favoriteCities.map((c) => (
+                <View key={c} style={styles.favChip}>
+                  <Text style={styles.favChipText}>★ {c}</Text>
+                </View>
+              ))}
+            </View>
+          </Card>
+        )}
 
         <View style={styles.actions}>
           <Button
@@ -203,5 +217,16 @@ const styles = StyleSheet.create({
   infoRowBorder: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
   infoLabel: { fontSize: fontSize.sm, color: colors.muted, fontWeight: '600' },
   infoValue: { fontSize: fontSize.sm, color: colors.white, fontWeight: '600' },
+  favCard: {},
+  favList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  favChip: {
+    backgroundColor: `${colors.yellow}18`,
+    borderRadius: radius.full,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: `${colors.yellow}44`,
+  },
+  favChipText: { fontSize: fontSize.sm, color: colors.yellow, fontWeight: '600' },
   actions: { paddingTop: spacing[4] },
 });
