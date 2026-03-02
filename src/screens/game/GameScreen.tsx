@@ -24,7 +24,7 @@ import { getRoomById } from '../../hooks/useRooms';
 import { useAuthStore } from '../../store/authStore';
 import { createMatch } from '../../hooks/useMatches';
 import { colors, fontSize, spacing, radius } from '../../theme';
-import type { GameSession, Question, UserAnswer } from '../../types';
+import type { Question, UserAnswer } from '../../types';
 import { Avatar } from '../../components/ui/Avatar';
 
 const ANSWER_COLORS = [colors.game.red, colors.game.blue, colors.game.yellow, colors.game.green];
@@ -46,6 +46,7 @@ export function GameScreen() {
   const [initialized, setInitialized] = useState(false);
 
   const session = useGameSession(sessionId);
+  const currentQuestionId = session ? (session.questionIds[session.currentQuestionIndex] ?? null) : null;
   const answeredCount = useAnsweredCount(sessionId, question?.id ?? null);
 
   useEffect(() => {
@@ -72,11 +73,11 @@ export function GameScreen() {
   }, [roomId, appUser, initialized]);
 
   useEffect(() => {
-    if (!session?.currentQuestionId) return;
+    if (!currentQuestionId) return;
     setMyAnswer(null);
     setSelectedUserId(null);
-    getQuestion(session.currentQuestionId).then(setQuestion);
-  }, [session?.currentQuestionIndex, session?.currentQuestionId]);
+    getQuestion(currentQuestionId).then(setQuestion);
+  }, [session?.currentQuestionIndex, currentQuestionId]);
 
   useEffect(() => {
     if (!session?.questionEndTime || session.gameState !== 'question') return;
@@ -104,7 +105,7 @@ export function GameScreen() {
     await submitAnswer({
       gameSessionId: session.id,
       userId: appUser.id,
-      questionId: session.currentQuestionId!,
+      questionId: currentQuestionId!,
       selectedOption: optionIndex,
       answeredAt: new Date().toISOString(),
     });
@@ -112,7 +113,7 @@ export function GameScreen() {
 
   const handleHostEndQuestion = useCallback(async () => {
     if (!session) return;
-    const answersData = await getAnswersForQuestion(session.id, session.currentQuestionId!);
+    const answersData = await getAnswersForQuestion(session.id, currentQuestionId!);
     setAnswers(answersData);
     await updateGameSession(session.id, { gameState: 'selection' });
   }, [session]);
@@ -122,7 +123,7 @@ export function GameScreen() {
     setSelectedUserId(targetUserId);
     await submitSelection({
       gameSessionId: session.id,
-      questionId: session.currentQuestionId!,
+      questionId: currentQuestionId!,
       selectorUserId: appUser.id,
       selectedUserId: targetUserId,
       createdAt: new Date().toISOString(),
