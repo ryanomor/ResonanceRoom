@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { signUp } from '../../hooks/useAuth';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { CitySearchInput } from '../../components/ui/CitySearchInput';
 import { colors, fontSize, spacing, radius } from '../../theme';
 import type { Gender } from '../../types';
 
@@ -89,12 +90,11 @@ export function SignupScreen() {
             secureTextEntry
             containerStyle={{ marginTop: 16 }}
           />
-          <Input
+          <CitySearchInput
             label="Your City"
             value={city}
-            onChangeText={setCity}
-            placeholder="e.g. New York, Los Angeles..."
-            containerStyle={{ marginTop: 16 }}
+            onSelect={setCity}
+            containerStyle={{ marginTop: 16, zIndex: 100 }}
           />
 
           <View style={styles.genderSection}>
@@ -146,6 +146,7 @@ const styles = StyleSheet.create({
     padding: spacing[6],
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'visible',
   },
   title: {
     fontSize: fontSize['2xl'],

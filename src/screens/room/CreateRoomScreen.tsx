@@ -14,6 +14,8 @@ import { useAuthStore } from '../../store/authStore';
 import { createRoom } from '../../hooks/useRooms';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { CitySearchInput } from '../../components/ui/CitySearchInput';
+import { VenueSearchInput } from '../../components/ui/VenueSearchInput';
 import { colors, fontSize, spacing, radius } from '../../theme';
 
 export function CreateRoomScreen() {
@@ -105,18 +107,19 @@ export function CreateRoomScreen() {
 
         <Text style={[styles.sectionLabel, { marginTop: spacing[5] }]}>Location</Text>
 
-        <Input
+        <CitySearchInput
           label="City"
           value={city}
-          onChangeText={setCity}
-          placeholder="New York"
+          onSelect={setCity}
+          containerStyle={{ zIndex: 200 }}
         />
-        <Input
+        <VenueSearchInput
           label="Venue Address (optional)"
           value={venueAddress}
-          onChangeText={setVenueAddress}
-          placeholder="123 Main St"
-          containerStyle={{ marginTop: 14 }}
+          onSelect={setVenueAddress}
+          cityBias={city}
+          placeholder="Search venue or address..."
+          containerStyle={{ marginTop: 14, zIndex: 100 }}
         />
 
         <Text style={[styles.sectionLabel, { marginTop: spacing[5] }]}>Game Settings</Text>
