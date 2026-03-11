@@ -8,8 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export --platform web",
-    "lint": "eslint .",
-    "postinstall": "node scripts/patch-css-interop.js"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.0",
