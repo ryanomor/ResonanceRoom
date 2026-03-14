@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import '../global.css';
 import { useAuthListener } from '../src/hooks/useAuth';
 import { useAuthStore } from '../src/store/authStore';
 import { useRouter, useSegments } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
-import { colors } from '../src/theme';
+import { colors } from '../src/theme'
+import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -35,6 +35,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+  useFrameworkReady();
   useAuthListener();
 
   return (
