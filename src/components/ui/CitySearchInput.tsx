@@ -90,36 +90,38 @@ export function CitySearchInput({ label, value, onSelect, containerStyle, error 
         animationType="none"
         onRequestClose={() => setOpen(false)}
       >
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          activeOpacity={1}
-          onPress={() => { setOpen(false); clear(); }}
-        />
-        {dropPos && (
-          <View style={[styles.dropdown, { top: dropPos.top, left: dropPos.left, width: dropPos.width }]}>
-            <FlatList
-              data={loading && results.length === 0 ? [] : results}
-              keyExtractor={(item, i) => `${item.lat}-${item.lon}-${i}`}
-              keyboardShouldPersistTaps="handled"
-              ListEmptyComponent={
-                loading ? (
-                  <View style={styles.item}>
-                    <Text style={styles.muted}>Searching...</Text>
-                  </View>
-                ) : null
-              }
-              renderItem={({ item, index }) => (
-                <TouchableOpacity
-                  style={[styles.item, index < results.length - 1 && styles.divider]}
-                  onPress={() => handleSelect(item)}
-                >
-                  <Text style={styles.primary} numberOfLines={1}>{item.name}</Text>
-                  <Text style={styles.secondary} numberOfLines={1}>{item.displayName}</Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        )}
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => { setOpen(false); clear(); }}
+          />
+          {dropPos && (
+            <View style={[styles.dropdown, { top: dropPos.top, left: dropPos.left, width: dropPos.width }]}>
+              <FlatList
+                data={loading && results.length === 0 ? [] : results}
+                keyExtractor={(item, i) => `${item.lat}-${item.lon}-${i}`}
+                keyboardShouldPersistTaps="handled"
+                ListEmptyComponent={
+                  loading ? (
+                    <View style={styles.item}>
+                      <Text style={styles.muted}>Searching...</Text>
+                    </View>
+                  ) : null
+                }
+                renderItem={({ item, index }) => (
+                  <TouchableOpacity
+                    style={[styles.item, index < results.length - 1 && styles.divider]}
+                    onPress={() => handleSelect(item)}
+                  >
+                    <Text style={styles.primary} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.secondary} numberOfLines={1}>{item.displayName}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          )}
+        </View>
       </Modal>
     </View>
   );
