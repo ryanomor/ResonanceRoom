@@ -47,15 +47,15 @@ export function VenueSearchInput({
   function handleFocus() {
     rowRef.current?.measureInWindow((x, y, w, h) => {
       setDropPos({ top: y + h + 4, left: x, width: w });
+      setOpen(true);
     });
-    setOpen(true);
   }
 
   function handleBlur() {
     setTimeout(() => {
       setOpen(false);
       clear();
-    }, 150);
+    }, 200);
   }
 
   function handleSelect(item: VenueResult) {
@@ -89,8 +89,8 @@ export function VenueSearchInput({
       </View>
       {error && <Text style={styles.errorText}>{error}</Text>}
 
-      {open && showList && dropPos && (
-        <Modal visible transparent animationType="none" onRequestClose={() => setOpen(false)}>
+      {open && dropPos && (
+        <Modal visible={showList} transparent animationType="none" onRequestClose={() => setOpen(false)}>
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
