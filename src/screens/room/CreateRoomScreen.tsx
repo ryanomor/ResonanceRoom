@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
@@ -16,6 +15,8 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { CitySearchInput } from '../../components/ui/CitySearchInput';
 import { VenueSearchInput } from '../../components/ui/VenueSearchInput';
+import { DateTimePicker } from '../../components/ui/DateTimePicker';
+import { QuestionPicker } from '../../components/ui/QuestionPicker';
 import { colors, fontSize, spacing, radius } from '../../theme';
 
 export function CreateRoomScreen() {
@@ -28,18 +29,26 @@ export function CreateRoomScreen() {
   const [venueAddress, setVenueAddress] = useState('');
   const [maxParticipants, setMaxParticipants] = useState('10');
   const [entryFee, setEntryFee] = useState('0');
-  const [requiresGenderParity, setRequiresGenderParity] = useState(true);
   const [scheduledStart, setScheduledStart] = useState(() => {
     const d = new Date();
     d.setHours(d.getHours() + 1, 0, 0, 0);
-    return d.toISOString().slice(0, 16);
+    return d;
   });
+  const [questionIds, setQuestionIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   async function handleCreate() {
-    if (!title.trim() || !city.trim()) {
-      setError('Title and city are required.');
+    if (!title.trim()) {
+      setError('Title is required.');
+      return;
+    }
+    if (!city.trim()) {
+      setError('City is required.');
+      return;
+    }
+    if (!venueAddress.trim()) {
+      setError('Venue address is required.');
       return;
     }
     if (!appUser) {
@@ -56,10 +65,10 @@ export function CreateRoomScreen() {
         description: description.trim(),
         maxParticipants: parseInt(maxParticipants) || 10,
         entryFee: parseFloat(entryFee) || 0,
-        scheduledStart: new Date(scheduledStart).toISOString(),
-        questionIds: [],
-        venueAddress: venueAddress.trim() || undefined,
-        requiresGenderParity,
+        scheduledStart: scheduledStart.toISOString(),
+        questionIds,
+        venueAddress: venueAddress.trim(),
+        requiresGenderParity: true,
       });
       router.replace(`/room/${room.id}`);
     } catch (e: any) {
@@ -114,7 +123,7 @@ export function CreateRoomScreen() {
           containerStyle={{ zIndex: 200 }}
         />
         <VenueSearchInput
-          label="Venue Address (optional)"
+          label="Venue Address"
           value={venueAddress}
           onSelect={setVenueAddress}
           cityBias={city}
@@ -141,26 +150,13 @@ export function CreateRoomScreen() {
           />
         </View>
 
-        <Input
-          label="Scheduled Start"
-          value={scheduledStart}
-          onChangeText={setScheduledStart}
-          placeholder="YYYY-MM-DDTHH:MM"
-          containerStyle={{ marginTop: 14 }}
-        />
-
-        <View style={styles.toggleRow}>
-          <View>
-            <Text style={styles.toggleLabel}>Gender Parity</Text>
-            <Text style={styles.toggleSub}>Balance male and female participants</Text>
-          </View>
-          <Switch
-            value={requiresGenderParity}
-            onValueChange={setRequiresGenderParity}
-            trackColor={{ true: colors.accent, false: colors.subtle }}
-            thumbColor={colors.white}
-          />
+        <View style={{ marginTop: 14, gap: 6 }}>
+          <Text style={styles.fieldLabel}>Scheduled Start</Text>
+          <DateTimePicker value={scheduledStart} onChange={setScheduledStart} />
         </View>
+
+        <Text style={[styles.sectionLabel, { marginTop: spacing[5] }]}>Questions</Text>
+        <QuestionPicker selectedIds={questionIds} onChange={setQuestionIds} />
 
         <Button
           label="Create Room"
@@ -207,18 +203,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: spacing[3],
   },
-  row: { flexDirection: 'row', gap: 12 },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: 16,
-    marginTop: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
+  fieldLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.offwhite,
+    letterSpacing: 0.3,
   },
-  toggleLabel: { fontSize: fontSize.base, fontWeight: '600', color: colors.white },
-  toggleSub: { fontSize: fontSize.xs, color: colors.muted, marginTop: 2 },
+  row: { flexDirection: 'row', gap: 12 },
 });
