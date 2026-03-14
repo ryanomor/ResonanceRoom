@@ -37,6 +37,7 @@ export function VenueSearchInput({
   const [open, setOpen] = useState(false);
   const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const rowRef = useRef<View>(null);
+  const isFocused = useRef(false);
 
   function handleChange(val: string) {
     setText(val);
@@ -45,16 +46,20 @@ export function VenueSearchInput({
   }
 
   function handleFocus() {
+    isFocused.current = true;
+    setOpen(true);
     rowRef.current?.measureInWindow((x, y, w, h) => {
       setDropPos({ top: y + h + 4, left: x, width: w });
-      setOpen(true);
     });
   }
 
   function handleBlur() {
+    isFocused.current = false;
     setTimeout(() => {
-      setOpen(false);
-      clear();
+      if (!isFocused.current) {
+        setOpen(false);
+        clear();
+      }
     }, 300);
   }
 
@@ -89,13 +94,18 @@ export function VenueSearchInput({
       </View>
       {error && <Text style={styles.errorText}>{error}</Text>}
 
-      {open && dropPos && hasContent && (
-        <Modal visible={true} transparent animationType="none" onRequestClose={() => setOpen(false)}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => { setOpen(false); clear(); }}
-          />
+      <Modal
+        visible={open && hasContent}
+        transparent
+        animationType="none"
+        onRequestClose={() => setOpen(false)}
+      >
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={() => { setOpen(false); clear(); }}
+        />
+        {dropPos && (
           <View style={[styles.dropdown, { top: dropPos.top, left: dropPos.left, width: dropPos.width }]}>
             <FlatList
               data={loading && results.length === 0 ? [] : results}
@@ -119,8 +129,8 @@ export function VenueSearchInput({
               )}
             />
           </View>
-        </Modal>
-      )}
+        )}
+      </Modal>
     </View>
   );
 }
