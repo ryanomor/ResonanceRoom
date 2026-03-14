@@ -69,7 +69,7 @@ export function HomeScreen() {
       <View style={styles.topBar}>
         <View>
           <Text style={styles.greeting}>Hey, {appUser?.username ?? 'Player'} 👋</Text>
-          <Text style={styles.subGreeting}>Find a game near you</Text>
+          <Text style={styles.subGreeting}>Play trivia, find your next match!</Text>
         </View>
         <TouchableOpacity
           style={styles.cityPill}
