@@ -122,7 +122,7 @@ export function useCitySearch() {
       } finally {
         setLoading(false);
       }
-    }, 350);
+    }, 200);
   }, []);
 
   const clear = useCallback(() => {

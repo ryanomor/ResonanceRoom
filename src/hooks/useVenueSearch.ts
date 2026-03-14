@@ -17,11 +17,13 @@ export function useVenueSearch() {
 
     if (!query.trim() || query.trim().length < 2) {
       setResults([]);
+      setLoading(false);
       return;
     }
 
+    setLoading(true);
+
     debounceTimer.current = setTimeout(async () => {
-      setLoading(true);
       try {
         const q = cityBias ? `${query}, ${cityBias}` : query;
         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=6`;
@@ -53,7 +55,7 @@ export function useVenueSearch() {
       } finally {
         setLoading(false);
       }
-    }, 400);
+    }, 200);
   }, []);
 
   const clear = useCallback(() => {

@@ -55,7 +55,7 @@ export function VenueSearchInput({
     setTimeout(() => {
       setOpen(false);
       clear();
-    }, 200);
+    }, 300);
   }
 
   function handleSelect(item: VenueResult) {
@@ -65,7 +65,7 @@ export function VenueSearchInput({
     setOpen(false);
   }
 
-  const showList = results.length > 0 || loading;
+  const hasContent = text.trim().length >= 2;
 
   return (
     <View style={[styles.wrapper, containerStyle]}>
@@ -89,8 +89,8 @@ export function VenueSearchInput({
       </View>
       {error && <Text style={styles.errorText}>{error}</Text>}
 
-      {open && dropPos && (
-        <Modal visible={showList} transparent animationType="none" onRequestClose={() => setOpen(false)}>
+      {open && dropPos && hasContent && (
+        <Modal visible={true} transparent animationType="none" onRequestClose={() => setOpen(false)}>
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
