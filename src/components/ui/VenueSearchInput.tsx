@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   StyleSheet,
   ViewStyle,
-  Modal,
   FlatList,
 } from 'react-native';
 import { useVenueSearch, VenueResult } from '../../hooks/useVenueSearch';
@@ -35,9 +34,7 @@ export function VenueSearchInput({
   const { results, loading, search, clear } = useVenueSearch();
   const [text, setText] = useState(value);
   const [open, setOpen] = useState(false);
-  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
-  const rowRef = useRef<View>(null);
-  const isFocused = useRef(false);
+  const isFocused = React.useRef(false);
 
   function handleChange(val: string) {
     setText(val);
@@ -48,9 +45,6 @@ export function VenueSearchInput({
   function handleFocus() {
     isFocused.current = true;
     setOpen(true);
-    rowRef.current?.measureInWindow((x, y, w, h) => {
-      setDropPos({ top: y + h + 4, left: x, width: w });
-    });
   }
 
   function handleBlur() {
@@ -60,7 +54,7 @@ export function VenueSearchInput({
         setOpen(false);
         clear();
       }
-    }, 300);
+    }, 200);
   }
 
   function handleSelect(item: VenueResult) {
@@ -71,14 +65,12 @@ export function VenueSearchInput({
   }
 
   const hasContent = text.trim().length >= 2;
+  const showDropdown = open && hasContent && (loading || results.length > 0);
 
   return (
     <View style={[styles.wrapper, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
-      <View
-        ref={rowRef}
-        style={[styles.inputRow, open && styles.focused, error ? styles.errorBorder : null]}
-      >
+      <View style={[styles.inputRow, open && styles.focused, error ? styles.errorBorder : null]}>
         <TextInput
           style={styles.input}
           value={text}
@@ -94,45 +86,32 @@ export function VenueSearchInput({
       </View>
       {error && <Text style={styles.errorText}>{error}</Text>}
 
-      <Modal
-        visible={open && hasContent}
-        transparent
-        animationType="none"
-        onRequestClose={() => setOpen(false)}
-      >
-        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => { setOpen(false); clear(); }}
+      {showDropdown && (
+        <View style={styles.dropdown}>
+          <FlatList
+            data={loading && results.length === 0 ? [] : results}
+            keyExtractor={(item, i) => `${item.lat}-${item.lon}-${i}`}
+            keyboardShouldPersistTaps="handled"
+            scrollEnabled={false}
+            ListEmptyComponent={
+              loading ? (
+                <View style={styles.item}>
+                  <Text style={styles.muted}>Searching...</Text>
+                </View>
+              ) : null
+            }
+            renderItem={({ item, index }) => (
+              <TouchableOpacity
+                style={[styles.item, index < results.length - 1 && styles.divider]}
+                onPress={() => handleSelect(item)}
+              >
+                <Text style={styles.primary} numberOfLines={1}>{item.shortName}</Text>
+                <Text style={styles.secondary} numberOfLines={2}>{item.displayName}</Text>
+              </TouchableOpacity>
+            )}
           />
-          {dropPos && (
-            <View style={[styles.dropdown, { top: dropPos.top, left: dropPos.left, width: dropPos.width }]}>
-              <FlatList
-                data={loading && results.length === 0 ? [] : results}
-                keyExtractor={(item, i) => `${item.lat}-${item.lon}-${i}`}
-                keyboardShouldPersistTaps="handled"
-                ListEmptyComponent={
-                  loading ? (
-                    <View style={styles.item}>
-                      <Text style={styles.muted}>Searching...</Text>
-                    </View>
-                  ) : null
-                }
-                renderItem={({ item, index }) => (
-                  <TouchableOpacity
-                    style={[styles.item, index < results.length - 1 && styles.divider]}
-                    onPress={() => handleSelect(item)}
-                  >
-                    <Text style={styles.primary} numberOfLines={1}>{item.shortName}</Text>
-                    <Text style={styles.secondary} numberOfLines={2}>{item.displayName}</Text>
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          )}
         </View>
-      </Modal>
+      )}
     </View>
   );
 }
@@ -165,12 +144,10 @@ const styles = StyleSheet.create({
   spinner: { marginLeft: 8 },
   errorText: { fontSize: fontSize.xs, color: colors.error, marginTop: 2 },
   dropdown: {
-    position: 'absolute',
     backgroundColor: colors.card,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    maxHeight: 260,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
