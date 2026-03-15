@@ -11,17 +11,21 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
-  const { firebaseUser, loading } = useAuthStore();
+  const { firebaseUser, loading, pendingSocialProfile } = useAuthStore();
 
   useEffect(() => {
     if (loading) return;
     const inAuth = segments[0] === 'auth';
+    const onSocialProfile = inAuth && segments[1] === 'social-profile';
+
     if (!firebaseUser && !inAuth) {
       router.replace('/auth/login');
-    } else if (firebaseUser && inAuth) {
+    } else if (firebaseUser && pendingSocialProfile && !onSocialProfile) {
+      router.replace('/auth/social-profile');
+    } else if (firebaseUser && !pendingSocialProfile && inAuth) {
       router.replace('/(tabs)/home');
     }
-  }, [firebaseUser, loading, segments]);
+  }, [firebaseUser, loading, pendingSocialProfile, segments]);
 
   if (loading) {
     return (

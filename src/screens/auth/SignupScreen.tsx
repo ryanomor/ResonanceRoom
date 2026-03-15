@@ -7,9 +7,10 @@ import {
   Platform,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { signUp } from '../../hooks/useAuth';
+import { signUp, signInWithGoogle, signInWithApple } from '../../hooks/useAuth';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { CitySearchInput } from '../../components/ui/CitySearchInput';
@@ -25,6 +26,8 @@ export function SignupScreen() {
   const [gender, setGender] = useState<Gender>('male');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
 
   async function handleSignup() {
     if (!username.trim() || !email.trim() || !password || !city.trim()) {
@@ -44,6 +47,40 @@ export function SignupScreen() {
       setError(e?.message ?? 'Sign up failed. Please try again.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleGoogle() {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      const { isNewUser } = await signInWithGoogle();
+      if (isNewUser) {
+        router.replace('/auth/social-profile');
+      } else {
+        router.replace('/(tabs)/home');
+      }
+    } catch (e: any) {
+      setError(e?.message ?? 'Google sign-in failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  }
+
+  async function handleApple() {
+    setError('');
+    setAppleLoading(true);
+    try {
+      const { isNewUser } = await signInWithApple();
+      if (isNewUser) {
+        router.replace('/auth/social-profile');
+      } else {
+        router.replace('/(tabs)/home');
+      }
+    } catch (e: any) {
+      setError(e?.message ?? 'Apple sign-in failed. Please try again.');
+    } finally {
+      setAppleLoading(false);
     }
   }
 
@@ -129,6 +166,46 @@ export function SignupScreen() {
             style={{ marginTop: 28 }}
             size="lg"
           />
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or continue with</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            onPress={handleGoogle}
+            disabled={googleLoading}
+            style={[styles.socialBtn, googleLoading && styles.socialBtnDisabled]}
+            activeOpacity={0.8}
+          >
+            {googleLoading ? (
+              <ActivityIndicator color={colors.white} size="small" />
+            ) : (
+              <>
+                <Text style={styles.socialBtnIcon}>G</Text>
+                <Text style={styles.socialBtnText}>Continue with Google</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {Platform.OS === 'ios' && (
+            <TouchableOpacity
+              onPress={handleApple}
+              disabled={appleLoading}
+              style={[styles.socialBtn, styles.appleBtnDark, appleLoading && styles.socialBtnDisabled]}
+              activeOpacity={0.8}
+            >
+              {appleLoading ? (
+                <ActivityIndicator color={colors.bg} size="small" />
+              ) : (
+                <>
+                  <Text style={[styles.socialBtnIcon, styles.appleBtnIconDark]}></Text>
+                  <Text style={[styles.socialBtnText, styles.appleBtnTextDark]}>Continue with Apple</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -193,4 +270,58 @@ const styles = StyleSheet.create({
   },
   genderBtnText: { fontSize: fontSize.base, color: colors.muted, fontWeight: '600' },
   genderBtnTextActive: { color: colors.white },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 16,
+    gap: 10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    fontSize: fontSize.xs,
+    color: colors.muted,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  socialBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    gap: 10,
+    marginBottom: 12,
+  },
+  socialBtnDisabled: {
+    opacity: 0.5,
+  },
+  socialBtnIcon: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.white,
+  },
+  socialBtnText: {
+    fontSize: fontSize.base,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  appleBtnDark: {
+    backgroundColor: colors.white,
+    borderColor: colors.white,
+  },
+  appleBtnIconDark: {
+    color: colors.bg,
+  },
+  appleBtnTextDark: {
+    color: colors.bg,
+  },
 });
