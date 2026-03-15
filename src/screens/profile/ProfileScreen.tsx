@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,13 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { CitySearchInput } from '../../components/ui/CitySearchInput';
+import { StripeConnectSection } from '../../components/ui/StripeConnectSection';
+import { getHostPayouts, type HostPayout } from '../../lib/payments';
 import { colors, fontSize, spacing, radius } from '../../theme';
+
+function formatCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
 
 export function ProfileScreen() {
   const router = useRouter();
@@ -26,6 +32,16 @@ export function ProfileScreen() {
   const [bio, setBio] = useState(appUser?.bio ?? '');
   const [city, setCity] = useState(appUser?.city ?? '');
   const [saving, setSaving] = useState(false);
+  const [payouts, setPayouts] = useState<HostPayout[]>([]);
+  const [payoutsLoading, setPayoutsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!appUser?.id) return;
+    setPayoutsLoading(true);
+    getHostPayouts(appUser.id)
+      .then(setPayouts)
+      .finally(() => setPayoutsLoading(false));
+  }, [appUser?.id]);
 
   async function handleSave() {
     setSaving(true);
@@ -61,6 +77,10 @@ export function ProfileScreen() {
       ]
     );
   }
+
+  const totalEarnedCents = payouts
+    .filter((p) => p.payout_status === 'paid')
+    .reduce((sum, p) => sum + p.net_payout_cents, 0);
 
   return (
     <View style={styles.container}>
@@ -161,6 +181,65 @@ export function ProfileScreen() {
           </Card>
         )}
 
+        {appUser?.id ? (
+          <View style={styles.stripeSection}>
+            <Text style={styles.sectionTitle}>Host Settings</Text>
+            <StripeConnectSection userId={appUser.id} />
+          </View>
+        ) : null}
+
+        {payouts.length > 0 && (
+          <Card style={styles.earningsCard}>
+            <View style={styles.earningsHeader}>
+              <Text style={styles.sectionTitle}>Earnings</Text>
+              <Text style={styles.earningsTotal}>{formatCents(totalEarnedCents)} total</Text>
+            </View>
+            {payouts.map((payout) => (
+              <View key={payout.id} style={styles.payoutRow}>
+                <View style={styles.payoutLeft}>
+                  <Text style={styles.payoutRoomId} numberOfLines={1}>
+                    Room {payout.room_id.slice(0, 8)}
+                  </Text>
+                  <Text style={styles.payoutDate}>
+                    {payout.paid_out_at
+                      ? new Date(payout.paid_out_at).toLocaleDateString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })
+                      : new Date(payout.created_at).toLocaleDateString([], {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                    {' · '}{payout.participant_count} player{payout.participant_count !== 1 ? 's' : ''}
+                  </Text>
+                </View>
+                <View style={styles.payoutRight}>
+                  <Text style={styles.payoutNet}>{formatCents(payout.net_payout_cents)}</Text>
+                  <Text style={styles.payoutFee}>
+                    -{formatCents(payout.platform_fee_cents)} fee
+                  </Text>
+                  <View
+                    style={[
+                      styles.payoutStatusPill,
+                      payout.payout_status === 'paid' ? styles.payoutPaid : styles.payoutFailed,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.payoutStatusText,
+                        payout.payout_status === 'paid' ? styles.payoutStatusPaidText : styles.payoutStatusFailedText,
+                      ]}
+                    >
+                      {payout.payout_status.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </Card>
+        )}
+
         <View style={styles.actions}>
           <Button
             label="Sign Out"
@@ -228,5 +307,44 @@ const styles = StyleSheet.create({
     borderColor: `${colors.yellow}44`,
   },
   favChipText: { fontSize: fontSize.sm, color: colors.yellow, fontWeight: '600' },
+  stripeSection: { gap: 12 },
+  earningsCard: { gap: 12 },
+  earningsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  earningsTotal: {
+    fontSize: fontSize.base,
+    fontWeight: '800',
+    color: colors.green,
+  },
+  payoutRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  payoutLeft: { flex: 1, gap: 4 },
+  payoutRoomId: { fontSize: fontSize.sm, fontWeight: '700', color: colors.white },
+  payoutDate: { fontSize: fontSize.xs, color: colors.muted },
+  payoutRight: { alignItems: 'flex-end', gap: 3 },
+  payoutNet: { fontSize: fontSize.base, fontWeight: '800', color: colors.white },
+  payoutFee: { fontSize: fontSize.xs, color: colors.muted },
+  payoutStatusPill: {
+    borderRadius: radius.full,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderWidth: 1,
+    marginTop: 2,
+  },
+  payoutPaid: { backgroundColor: `${colors.green}22`, borderColor: colors.green },
+  payoutFailed: { backgroundColor: `${colors.error}22`, borderColor: colors.error },
+  payoutStatusText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.4 },
+  payoutStatusPaidText: { color: colors.green },
+  payoutStatusFailedText: { color: colors.error },
   actions: { paddingTop: spacing[4] },
 });

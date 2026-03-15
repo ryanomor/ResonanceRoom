@@ -13,13 +13,28 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { participantId } = await req.json();
+    const { participantId, scheduledStart } = await req.json();
 
     if (!participantId) {
       return new Response(
         JSON.stringify({ error: "Missing participantId" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    if (scheduledStart) {
+      const startTime = new Date(scheduledStart).getTime();
+      const now = Date.now();
+      const oneHourMs = 60 * 60 * 1000;
+      if (startTime - now < oneHourMs) {
+        return new Response(
+          JSON.stringify({
+            refunded: false,
+            reason: "Refunds are not allowed within 1 hour of the scheduled game start.",
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -36,7 +51,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: payment } = await supabase
       .from("participant_payments")
-      .select("stripe_session_id")
+      .select("stripe_session_id, stripe_transfer_id, amount_cents")
       .eq("participant_id", participantId)
       .eq("payment_status", "paid")
       .maybeSingle();
@@ -50,9 +65,7 @@ Deno.serve(async (req: Request) => {
 
     const sessionRes = await fetch(
       `https://api.stripe.com/v1/checkout/sessions/${payment.stripe_session_id}`,
-      {
-        headers: { "Authorization": `Bearer ${stripeSecretKey}` },
-      }
+      { headers: { "Authorization": `Bearer ${stripeSecretKey}` } }
     );
     const stripeSession = await sessionRes.json();
     const paymentIntentId = stripeSession.payment_intent;
@@ -79,6 +92,21 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ refunded: false, error: refund.error?.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (payment.stripe_transfer_id) {
+      const reversalBody = new URLSearchParams();
+      await fetch(
+        `https://api.stripe.com/v1/transfers/${payment.stripe_transfer_id}/reversals`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${stripeSecretKey}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: reversalBody.toString(),
+        }
       );
     }
 

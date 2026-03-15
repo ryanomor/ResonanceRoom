@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { CitySearchInput } from '../../components/ui/CitySearchInput';
 import { VenueSearchInput } from '../../components/ui/VenueSearchInput';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import { QuestionPicker } from '../../components/ui/QuestionPicker';
+import { getHostStripeAccount } from '../../lib/payments';
 import { colors, fontSize, spacing, radius } from '../../theme';
 
 function computeScheduledEnd(start: Date, maxParticipants: number): Date {
@@ -57,6 +58,14 @@ export function CreateRoomScreen() {
   const [questionIds, setQuestionIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [stripeConnected, setStripeConnected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!appUser?.id) return;
+    getHostStripeAccount(appUser.id).then((acct) => {
+      setStripeConnected(acct?.connect_status === 'active');
+    });
+  }, [appUser?.id]);
 
   const parsedMax = parseInt(maxParticipants) || 10;
   const minQuestions = parsedMax;
@@ -67,6 +76,9 @@ export function CreateRoomScreen() {
   );
 
   const sessionDurationMins = formatDurationMins(scheduledStart, scheduledEnd);
+
+  const parsedFee = parseFloat(entryFee) || 0;
+  const feeRequiresStripe = parsedFee > 0 && stripeConnected === false;
 
   async function handleCreate() {
     if (!title.trim()) {
@@ -89,6 +101,10 @@ export function CreateRoomScreen() {
       setError('You must be logged in.');
       return;
     }
+    if (parsedFee > 0 && stripeConnected === false) {
+      setError('Connect your Stripe account in Profile → Host Settings before charging an entry fee.');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
@@ -98,7 +114,7 @@ export function CreateRoomScreen() {
         title: title.trim(),
         description: description.trim(),
         maxParticipants: parsedMax,
-        entryFee: parseFloat(entryFee) || 0,
+        entryFee: parsedFee,
         scheduledStart: scheduledStart.toISOString(),
         scheduledEnd: scheduledEnd.toISOString(),
         questionIds,
@@ -177,6 +193,14 @@ export function CreateRoomScreen() {
 
         <Text style={[styles.sectionLabel, { marginTop: spacing[5] }]}>Game Settings</Text>
 
+        {feeRequiresStripe && (
+          <View style={styles.stripeWarning}>
+            <Text style={styles.stripeWarningText}>
+              Connect your Stripe account in Profile → Host Settings to charge an entry fee.
+            </Text>
+          </View>
+        )}
+
         <View style={styles.row}>
           <Input
             label="Max Players"
@@ -191,6 +215,7 @@ export function CreateRoomScreen() {
             onChangeText={setEntryFee}
             keyboardType="decimal-pad"
             containerStyle={{ flex: 1 }}
+            editable={stripeConnected !== false || parsedFee === 0}
           />
         </View>
 
@@ -269,5 +294,19 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: '600',
     marginTop: 8,
+  },
+  stripeWarning: {
+    backgroundColor: `${colors.yellow}18`,
+    borderRadius: radius.md,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: `${colors.yellow}44`,
+    marginBottom: 8,
+  },
+  stripeWarningText: {
+    fontSize: fontSize.sm,
+    color: colors.yellow,
+    fontWeight: '600',
+    lineHeight: 20,
   },
 });

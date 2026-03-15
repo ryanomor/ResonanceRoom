@@ -100,6 +100,7 @@ export function RoomDetailScreen() {
         userId: appUser.id,
         amount: room.entryFee,
         roomTitle: room.title,
+        hostUserId: room.hostId,
       });
       await Linking.openURL(url);
     } catch (e: any) {

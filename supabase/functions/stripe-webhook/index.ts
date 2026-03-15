@@ -44,7 +44,6 @@ Deno.serve(async (req: Request) => {
 
   try {
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
 
     const payload = await req.text();
     const sigHeader = req.headers.get("stripe-signature") ?? "";
@@ -63,12 +62,32 @@ Deno.serve(async (req: Request) => {
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
-      const { participantId, roomId } = session.metadata ?? {};
+      const {
+        participantId,
+        roomId,
+        amountCents,
+        applicationFeeCents,
+      } = session.metadata ?? {};
 
-      if (participantId && stripeSecretKey) {
+      if (participantId) {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+        const paymentIntentId = session.payment_intent;
+        let transferId: string | null = null;
+
+        if (paymentIntentId) {
+          const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+          if (stripeSecretKey) {
+            const piRes = await fetch(
+              `https://api.stripe.com/v1/payment_intents/${paymentIntentId}`,
+              { headers: { "Authorization": `Bearer ${stripeSecretKey}` } }
+            );
+            const pi = await piRes.json();
+            transferId = pi.transfer ?? null;
+          }
+        }
 
         await supabase
           .from("participant_payments")
@@ -76,6 +95,9 @@ Deno.serve(async (req: Request) => {
             participant_id: participantId,
             room_id: roomId,
             stripe_session_id: session.id,
+            stripe_transfer_id: transferId,
+            amount_cents: amountCents ? parseInt(amountCents) : null,
+            application_fee_cents: applicationFeeCents ? parseInt(applicationFeeCents) : null,
             payment_status: "paid",
             paid_at: new Date().toISOString(),
           });

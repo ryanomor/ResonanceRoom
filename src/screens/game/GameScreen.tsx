@@ -25,7 +25,7 @@ import { useParticipants } from '../../hooks/useParticipants';
 import { useAuthStore } from '../../store/authStore';
 import { createMatch } from '../../hooks/useMatches';
 import { colors, fontSize, spacing, radius } from '../../theme';
-import { getPaymentStatus } from '../../lib/payments';
+import { getPaymentStatus, triggerHostPayout } from '../../lib/payments';
 import type { Question, UserAnswer, Room } from '../../types';
 import { Avatar } from '../../components/ui/Avatar';
 
@@ -43,10 +43,12 @@ export function GameScreen() {
   const [timeLeft, setTimeLeft] = useState(30);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
   const [isHost, setIsHost] = useState(false);
+  const [hostId, setHostId] = useState<string | null>(null);
   const [pulse] = useState(new Animated.Value(1));
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
   const [paymentBlocked, setPaymentBlocked] = useState(false);
+  const [payoutTriggered, setPayoutTriggered] = useState(false);
 
   const participants = useParticipants(roomId ?? null);
 
@@ -60,10 +62,11 @@ export function GameScreen() {
 
     (async () => {
       const room = await getRoomById(roomId);
-      const hostId = room?.hostId;
-      setIsHost(hostId === appUser.id);
+      const roomHostId = room?.hostId ?? null;
+      setHostId(roomHostId);
+      setIsHost(roomHostId === appUser.id);
 
-      if (hostId !== appUser.id && (room?.entryFee ?? 0) > 0) {
+      if (roomHostId !== appUser.id && (room?.entryFee ?? 0) > 0) {
         const myParticipant = participants.find((p) => p.userId === appUser.id);
         if (myParticipant) {
           const payment = await getPaymentStatus(myParticipant.id);
@@ -175,8 +178,12 @@ export function GameScreen() {
       });
     } else {
       await updateGameSession(session.id, { gameState: 'ended' });
+      if (isHost && roomId && hostId && !payoutTriggered) {
+        setPayoutTriggered(true);
+        triggerHostPayout(roomId, hostId);
+      }
     }
-  }, [session]);
+  }, [session, isHost, roomId, hostId, payoutTriggered]);
 
   if (paymentBlocked) {
     return (
