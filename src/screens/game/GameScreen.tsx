@@ -21,10 +21,12 @@ import {
   useAnsweredCount,
 } from '../../hooks/useGame';
 import { getRoomById } from '../../hooks/useRooms';
+import { useParticipants } from '../../hooks/useParticipants';
 import { useAuthStore } from '../../store/authStore';
 import { createMatch } from '../../hooks/useMatches';
 import { colors, fontSize, spacing, radius } from '../../theme';
-import type { Question, UserAnswer } from '../../types';
+import { getPaymentStatus } from '../../lib/payments';
+import type { Question, UserAnswer, Room } from '../../types';
 import { Avatar } from '../../components/ui/Avatar';
 
 const ANSWER_COLORS = [colors.game.red, colors.game.blue, colors.game.yellow, colors.game.green];
@@ -44,6 +46,9 @@ export function GameScreen() {
   const [pulse] = useState(new Animated.Value(1));
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const [paymentBlocked, setPaymentBlocked] = useState(false);
+
+  const participants = useParticipants(roomId ?? null);
 
   const session = useGameSession(sessionId);
   const currentQuestionId = session ? (session.questionIds[session.currentQuestionIndex] ?? null) : null;
@@ -55,7 +60,19 @@ export function GameScreen() {
 
     (async () => {
       const room = await getRoomById(roomId);
-      setIsHost(room?.hostId === appUser.id);
+      const hostId = room?.hostId;
+      setIsHost(hostId === appUser.id);
+
+      if (hostId !== appUser.id && (room?.entryFee ?? 0) > 0) {
+        const myParticipant = participants.find((p) => p.userId === appUser.id);
+        if (myParticipant) {
+          const payment = await getPaymentStatus(myParticipant.id);
+          if (!payment || payment.payment_status !== 'paid') {
+            setPaymentBlocked(true);
+            return;
+          }
+        }
+      }
 
       let s = await getSessionByRoomId(roomId);
       if (!s && room?.hostId === appUser.id) {
@@ -160,6 +177,21 @@ export function GameScreen() {
       await updateGameSession(session.id, { gameState: 'ended' });
     }
   }, [session]);
+
+  if (paymentBlocked) {
+    return (
+      <View style={styles.blockedScreen}>
+        <Text style={styles.blockedIcon}>🔒</Text>
+        <Text style={styles.blockedTitle}>Payment Required</Text>
+        <Text style={styles.blockedSub}>
+          This game requires a paid entry. Complete your payment from the room page to join.
+        </Text>
+        <TouchableOpacity style={styles.blockedBtn} onPress={() => router.back()}>
+          <Text style={styles.blockedBtnText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   if (!session || !question) {
     return (
@@ -372,6 +404,33 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   loading: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' },
   loadingText: { color: colors.muted, fontSize: fontSize.base },
+  blockedScreen: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing[6],
+    gap: 16,
+  },
+  blockedIcon: { fontSize: 56 },
+  blockedTitle: { fontSize: fontSize['2xl'], fontWeight: '900', color: colors.white, textAlign: 'center' },
+  blockedSub: {
+    fontSize: fontSize.sm,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 280,
+  },
+  blockedBtn: {
+    marginTop: 8,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing[6],
+    paddingVertical: spacing[4],
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  blockedBtnText: { fontSize: fontSize.base, fontWeight: '700', color: colors.white },
 
   questionHeader: {
     backgroundColor: colors.surface,

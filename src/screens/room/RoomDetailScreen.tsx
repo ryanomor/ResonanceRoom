@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,16 +7,25 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getRoomById } from '../../hooks/useRooms';
-import { useParticipants, joinRoom, updateParticipantStatus } from '../../hooks/useParticipants';
+import {
+  useParticipants,
+  joinRoom,
+  updateParticipantStatus,
+  usePaidParticipantIds,
+} from '../../hooks/useParticipants';
 import { useAuthStore } from '../../store/authStore';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { colors, fontSize, spacing, radius } from '../../theme';
+import { createPaymentLink, getPaymentStatus } from '../../lib/payments';
 import type { Room, RoomParticipant } from '../../types';
+
+const MIN_PLAYERS_RATIO = 0.5;
 
 export function RoomDetailScreen() {
   const router = useRouter();
@@ -25,15 +34,33 @@ export function RoomDetailScreen() {
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [payingLink, setPayingLink] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState(false);
+
   const participants = useParticipants(id ?? null);
+  const paidParticipantIds = usePaidParticipantIds(id ?? null);
 
   const myParticipant = participants.find((p) => p.userId === appUser?.id);
   const isHost = room?.hostId === appUser?.id;
+
+  const isPaidRoom = (room?.entryFee ?? 0) > 0;
+
   const approvedPlayers = participants.filter(
     (p) => p.role !== 'host' && (p.status === 'approved' || p.status === 'inGame' || p.status === 'paid')
   );
   const approvedCount = approvedPlayers.length;
   const pendingCount = participants.filter((p) => p.status === 'pending' && p.role !== 'host').length;
+
+  const paidPlayersCount = isPaidRoom
+    ? approvedPlayers.filter((p) => paidParticipantIds.has(p.id)).length
+    : approvedCount;
+
+  const minPlayers = room ? Math.max(2, Math.ceil(room.maxParticipants * MIN_PLAYERS_RATIO)) : 2;
+  const canStartGame = isPaidRoom ? paidPlayersCount >= minPlayers : approvedCount >= minPlayers;
+
+  const myPaymentStatus = myParticipant && isPaidRoom
+    ? (paidParticipantIds.has(myParticipant.id) ? 'paid' : 'unpaid')
+    : 'free';
 
   useEffect(() => {
     if (!id) return;
@@ -62,6 +89,40 @@ export function RoomDetailScreen() {
   async function handleReject(p: RoomParticipant) {
     await updateParticipantStatus(p.id, 'rejected');
   }
+
+  const handlePayToEnter = useCallback(async () => {
+    if (!room || !myParticipant || !appUser) return;
+    setPayingLink(true);
+    try {
+      const { url } = await createPaymentLink({
+        roomId: room.id,
+        participantId: myParticipant.id,
+        userId: appUser.id,
+        amount: room.entryFee,
+        roomTitle: room.title,
+      });
+      await Linking.openURL(url);
+    } catch (e: any) {
+      Alert.alert('Payment Error', e?.message ?? 'Could not create payment link.');
+    } finally {
+      setPayingLink(false);
+    }
+  }, [room, myParticipant, appUser]);
+
+  const handleCheckPayment = useCallback(async () => {
+    if (!myParticipant) return;
+    setCheckingPayment(true);
+    try {
+      const record = await getPaymentStatus(myParticipant.id);
+      if (record?.payment_status === 'paid') {
+        router.push(`/game/${room?.id}`);
+      } else {
+        Alert.alert('Payment Pending', 'Your payment has not been confirmed yet. Please complete the payment first.');
+      }
+    } finally {
+      setCheckingPayment(false);
+    }
+  }, [myParticipant, room]);
 
   if (loading || !room) {
     return (
@@ -151,29 +212,70 @@ export function RoomDetailScreen() {
         )}
 
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Players ({approvedCount})
-          </Text>
-          {approvedPlayers.map((p) => (
-            <View key={p.id} style={styles.participantRow}>
-              <Avatar name={p.userId} size="sm" />
-              <Text style={styles.participantId}>{p.userId.slice(0, 8)}...</Text>
-              <View style={[styles.badge, styles.playerBadge]}>
-                <Text style={styles.badgeText}>player</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Players ({approvedCount})</Text>
+            {isPaidRoom && (
+              <View style={styles.paidSummaryPill}>
+                <Text style={styles.paidSummaryText}>
+                  {paidPlayersCount}/{approvedCount} paid
+                </Text>
               </View>
+            )}
+          </View>
+
+          {isPaidRoom && isHost && (
+            <View style={styles.startRequirement}>
+              <Text style={styles.startRequirementText}>
+                Need {minPlayers} paid players to start · {paidPlayersCount} paid
+              </Text>
             </View>
-          ))}
+          )}
+
+          {approvedPlayers.map((p) => {
+            const isPaid = isPaidRoom ? paidParticipantIds.has(p.id) : true;
+            return (
+              <View key={p.id} style={styles.participantRow}>
+                <Avatar name={p.userId} size="sm" />
+                <Text style={styles.participantId}>{p.userId.slice(0, 8)}...</Text>
+                {isPaidRoom ? (
+                  isPaid ? (
+                    <View style={[styles.statusBadge, styles.paidBadge]}>
+                      <Text style={[styles.statusBadgeText, { color: colors.green }]}>PAID</Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.statusBadge, styles.pendingPayBadge]}>
+                      <Text style={[styles.statusBadgeText, { color: colors.yellow }]}>AWAITING</Text>
+                    </View>
+                  )
+                ) : (
+                  <View style={[styles.badge, styles.playerBadge]}>
+                    <Text style={styles.badgeText}>player</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
         </Card>
       </ScrollView>
 
       <View style={styles.footer}>
         {isHost && room.status === 'waiting' ? (
-          <Button
-            label="Start Game"
-            onPress={() => router.push(`/game/${room.id}`)}
-            size="lg"
-            variant="primary"
-          />
+          <View style={styles.hostFooter}>
+            {isPaidRoom && (
+              <Text style={styles.hostPayNote}>
+                {canStartGame
+                  ? `${paidPlayersCount} players paid — ready to start`
+                  : `Waiting for ${minPlayers - paidPlayersCount} more paid player${minPlayers - paidPlayersCount !== 1 ? 's' : ''}`}
+              </Text>
+            )}
+            <Button
+              label="Start Game"
+              onPress={() => router.push(`/game/${room.id}`)}
+              size="lg"
+              variant="primary"
+              disabled={!canStartGame}
+            />
+          </View>
         ) : !myParticipant ? (
           <Button
             label="Request to Join"
@@ -185,7 +287,30 @@ export function RoomDetailScreen() {
           <View style={styles.pendingBanner}>
             <Text style={styles.pendingText}>Waiting for host approval...</Text>
           </View>
-        ) : myParticipant.status === 'approved' ? (
+        ) : myParticipant.status === 'approved' && isPaidRoom && myPaymentStatus !== 'paid' ? (
+          <View style={styles.paymentFooter}>
+            <View style={styles.paymentInfo}>
+              <Text style={styles.paymentInfoTitle}>Payment required to join</Text>
+              <Text style={styles.paymentInfoSub}>
+                You've been approved! Pay the ${room.entryFee} entry fee to lock in your spot.
+              </Text>
+            </View>
+            <View style={styles.paymentBtns}>
+              <Button
+                label={payingLink ? 'Opening...' : `Pay $${room.entryFee} to Enter`}
+                onPress={handlePayToEnter}
+                loading={payingLink}
+                size="lg"
+                variant="primary"
+              />
+              <TouchableOpacity onPress={handleCheckPayment} disabled={checkingPayment} style={styles.alreadyPaidBtn}>
+                <Text style={styles.alreadyPaidText}>
+                  {checkingPayment ? 'Checking...' : 'Already paid? Tap to verify'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : myParticipant.status === 'approved' || myPaymentStatus === 'paid' || myParticipant.status === 'paid' ? (
           <Button
             label="Enter Game"
             onPress={() => router.push(`/game/${room.id}`)}
@@ -214,7 +339,7 @@ const styles = StyleSheet.create({
   },
   back: { fontSize: fontSize.base, color: colors.accent, fontWeight: '600' },
   topTitle: { fontSize: fontSize.base, fontWeight: '800', color: colors.white, flex: 1, textAlign: 'center' },
-  content: { padding: spacing[5], gap: 16, paddingBottom: 120 },
+  content: { padding: spacing[5], gap: 16, paddingBottom: 180 },
   hero: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
@@ -258,7 +383,25 @@ const styles = StyleSheet.create({
   },
   venueText: { fontSize: fontSize.sm, color: colors.muted },
   section: { gap: 12 },
-  sectionTitle: { fontSize: fontSize.base, fontWeight: '700', color: colors.white, marginBottom: 4 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  sectionTitle: { fontSize: fontSize.base, fontWeight: '700', color: colors.white },
+  paidSummaryPill: {
+    backgroundColor: `${colors.green}22`,
+    borderRadius: radius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: colors.green,
+  },
+  paidSummaryText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.green },
+  startRequirement: {
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 4,
+  },
+  startRequirementText: { fontSize: fontSize.xs, color: colors.muted, fontWeight: '600' },
   participantRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -277,9 +420,23 @@ const styles = StyleSheet.create({
   approveText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.green },
   rejectText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.error },
   badge: { borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
-  hostBadge: { backgroundColor: `${colors.yellow}22`, borderWidth: 1, borderColor: colors.yellow },
   playerBadge: { backgroundColor: colors.card },
   badgeText: { fontSize: 10, fontWeight: '700', color: colors.muted },
+  statusBadge: {
+    borderRadius: radius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+  },
+  paidBadge: {
+    backgroundColor: `${colors.green}22`,
+    borderColor: colors.green,
+  },
+  pendingPayBadge: {
+    backgroundColor: `${colors.yellow}22`,
+    borderColor: colors.yellow,
+  },
+  statusBadgeText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.4 },
   footer: {
     position: 'absolute',
     bottom: 0,
@@ -291,6 +448,13 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
+  hostFooter: { gap: 10 },
+  hostPayNote: {
+    fontSize: fontSize.sm,
+    color: colors.muted,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
   pendingBanner: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
@@ -300,4 +464,17 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   pendingText: { fontSize: fontSize.base, color: colors.muted, fontWeight: '600' },
+  paymentFooter: { gap: 12 },
+  paymentInfo: {
+    backgroundColor: `${colors.yellow}15`,
+    borderRadius: radius.md,
+    padding: spacing[4],
+    borderWidth: 1,
+    borderColor: `${colors.yellow}44`,
+  },
+  paymentInfoTitle: { fontSize: fontSize.sm, fontWeight: '800', color: colors.yellow, marginBottom: 4 },
+  paymentInfoSub: { fontSize: fontSize.xs, color: colors.muted, lineHeight: 18 },
+  paymentBtns: { gap: 8 },
+  alreadyPaidBtn: { alignItems: 'center', paddingVertical: 8 },
+  alreadyPaidText: { fontSize: fontSize.xs, color: colors.accent, fontWeight: '600' },
 });
