@@ -61,10 +61,13 @@ export function GameScreen() {
       if (!s && room?.hostId === appUser.id) {
         s = await createGameSession(roomId, room?.questionIds ?? []);
         if (s) {
+          const firstQuestionId = s.questionIds[0] ?? null;
+          const firstQuestion = firstQuestionId ? await getQuestion(firstQuestionId) : null;
+          const timeLimitMs = (firstQuestion?.timeLimitSeconds ?? 30) * 1000;
           await updateGameSession(s.id, {
             gameState: 'question',
             questionStartTime: new Date().toISOString(),
-            questionEndTime: new Date(Date.now() + 30000).toISOString(),
+            questionEndTime: new Date(Date.now() + timeLimitMs).toISOString(),
           });
         }
       }
@@ -76,7 +79,10 @@ export function GameScreen() {
     if (!currentQuestionId) return;
     setMyAnswer(null);
     setSelectedUserId(null);
-    getQuestion(currentQuestionId).then(setQuestion);
+    getQuestion(currentQuestionId).then((q) => {
+      setQuestion(q);
+      if (q) setTimeLeft(q.timeLimitSeconds);
+    });
   }, [session?.currentQuestionIndex, currentQuestionId]);
 
   useEffect(() => {
@@ -139,12 +145,16 @@ export function GameScreen() {
   const handleNextQuestion = useCallback(async () => {
     if (!session) return;
     if (session.currentQuestionIndex < session.questionIds.length - 1) {
+      const nextIndex = session.currentQuestionIndex + 1;
+      const nextQuestionId = session.questionIds[nextIndex] ?? null;
+      const nextQuestion = nextQuestionId ? await getQuestion(nextQuestionId) : null;
+      const timeLimitMs = (nextQuestion?.timeLimitSeconds ?? 30) * 1000;
       const now = new Date();
       await updateGameSession(session.id, {
-        currentQuestionIndex: session.currentQuestionIndex + 1,
+        currentQuestionIndex: nextIndex,
         gameState: 'question',
         questionStartTime: now.toISOString(),
-        questionEndTime: new Date(now.getTime() + 30000).toISOString(),
+        questionEndTime: new Date(now.getTime() + timeLimitMs).toISOString(),
       });
     } else {
       await updateGameSession(session.id, { gameState: 'ended' });
