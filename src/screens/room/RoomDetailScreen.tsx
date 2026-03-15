@@ -29,8 +29,11 @@ export function RoomDetailScreen() {
 
   const myParticipant = participants.find((p) => p.userId === appUser?.id);
   const isHost = room?.hostId === appUser?.id;
-  const approvedCount = participants.filter((p) => p.status === 'approved' || p.status === 'inGame' || p.status === 'paid').length;
-  const pendingCount = participants.filter((p) => p.status === 'pending').length;
+  const approvedPlayers = participants.filter(
+    (p) => p.role !== 'host' && (p.status === 'approved' || p.status === 'inGame' || p.status === 'paid')
+  );
+  const approvedCount = approvedPlayers.length;
+  const pendingCount = participants.filter((p) => p.status === 'pending' && p.role !== 'host').length;
 
   useEffect(() => {
     if (!id) return;
@@ -151,17 +154,15 @@ export function RoomDetailScreen() {
           <Text style={styles.sectionTitle}>
             Players ({approvedCount})
           </Text>
-          {participants
-            .filter((p) => ['approved', 'paid', 'inGame'].includes(p.status))
-            .map((p) => (
-              <View key={p.id} style={styles.participantRow}>
-                <Avatar name={p.userId} size="sm" />
-                <Text style={styles.participantId}>{p.userId.slice(0, 8)}...</Text>
-                <View style={[styles.badge, p.role === 'host' ? styles.hostBadge : styles.playerBadge]}>
-                  <Text style={styles.badgeText}>{p.role}</Text>
-                </View>
+          {approvedPlayers.map((p) => (
+            <View key={p.id} style={styles.participantRow}>
+              <Avatar name={p.userId} size="sm" />
+              <Text style={styles.participantId}>{p.userId.slice(0, 8)}...</Text>
+              <View style={[styles.badge, styles.playerBadge]}>
+                <Text style={styles.badgeText}>player</Text>
               </View>
-            ))}
+            </View>
+          ))}
         </Card>
       </ScrollView>
 

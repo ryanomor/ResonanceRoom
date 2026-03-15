@@ -44,6 +44,24 @@ export async function joinRoom(roomId: string, userId: string): Promise<RoomPart
   return p;
 }
 
+export async function joinRoomAsHost(roomId: string, userId: string): Promise<RoomParticipant> {
+  const now = new Date().toISOString();
+  const p: RoomParticipant = {
+    id: uuidv4(),
+    roomId,
+    userId,
+    status: 'approved',
+    role: 'host',
+    requestedAt: now,
+    approvedAt: now,
+    score: 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await setDoc(doc(db, 'roomParticipants', p.id), p);
+  return p;
+}
+
 export async function updateParticipantStatus(id: string, status: ParticipantStatus) {
   await updateDoc(doc(db, 'roomParticipants', id), {
     status,

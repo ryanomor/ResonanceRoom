@@ -191,6 +191,33 @@ export function GameScreen() {
   }
 
   if (session.gameState === 'selection') {
+    if (isHost) {
+      return (
+        <View style={styles.container}>
+          <View style={styles.selectionHeader}>
+            <Text style={styles.selectionTitle}>Selection Phase</Text>
+            <Text style={styles.selectionSub}>Players are choosing their matches...</Text>
+          </View>
+          <View style={styles.hostSelectionBody}>
+            <View style={styles.hostStatCard}>
+              <Text style={styles.hostStatValue}>{answers.length}</Text>
+              <Text style={styles.hostStatLabel}>Answers submitted</Text>
+            </View>
+            <Text style={styles.hostWaitingText}>
+              Wait for players to select their matches, then advance.
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.hostBtn} onPress={handleNextQuestion}>
+            <Text style={styles.hostBtnText}>
+              {session.currentQuestionIndex < session.questionIds.length - 1
+                ? 'Next Question →'
+                : 'End Game'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     const myAnswerIdx = myAnswer ?? -1;
     const usersWhoMatchedMe = answers.filter(
       (a) => a.userId !== appUser?.id && a.selectedOption === myAnswerIdx
@@ -231,22 +258,60 @@ export function GameScreen() {
               );
             })}
         </ScrollView>
-
-        {isHost && (
-          <TouchableOpacity style={styles.hostBtn} onPress={handleNextQuestion}>
-            <Text style={styles.hostBtnText}>
-              {session.currentQuestionIndex < session.questionIds.length - 1
-                ? 'Next Question →'
-                : 'End Game'}
-            </Text>
-          </TouchableOpacity>
-        )}
       </View>
     );
   }
 
   const timerColor = timeLeft <= 5 ? colors.primary : timeLeft <= 10 ? colors.yellow : colors.white;
   const progressPct = question.timeLimitSeconds > 0 ? timeLeft / question.timeLimitSeconds : 0;
+
+  if (isHost) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.questionHeader}>
+          <View style={styles.timerRow}>
+            <Animated.Text
+              style={[styles.timer, { color: timerColor, transform: [{ scale: pulse }] }]}
+            >
+              {timeLeft}
+            </Animated.Text>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressBar, { width: `${progressPct * 100}%`, backgroundColor: timerColor }]} />
+            </View>
+          </View>
+
+          <View style={styles.questionMeta}>
+            <Text style={styles.questionCounter}>
+              {session.currentQuestionIndex + 1} / {session.questionIds.length}
+            </Text>
+            <View style={styles.answeredPill}>
+              <Text style={styles.answeredText}>{answeredCount} answered</Text>
+            </View>
+          </View>
+
+          <Text style={styles.questionText}>{question.questionText}</Text>
+        </View>
+
+        <View style={styles.hostAnswerPreview}>
+          {question.options.map((option, idx) => (
+            <View
+              key={idx}
+              style={[styles.hostAnswerRow, { borderLeftColor: ANSWER_COLORS[idx % 4] }]}
+            >
+              <Text style={[styles.hostAnswerShape, { color: ANSWER_COLORS[idx % 4] }]}>
+                {ANSWER_SHAPES[idx % 4]}
+              </Text>
+              <Text style={styles.hostAnswerOptionText}>{option}</Text>
+            </View>
+          ))}
+        </View>
+
+        <TouchableOpacity style={styles.hostBtn} onPress={handleHostEndQuestion}>
+          <Text style={styles.hostBtnText}>End Question & Show Selection</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -266,11 +331,6 @@ export function GameScreen() {
           <Text style={styles.questionCounter}>
             {session.currentQuestionIndex + 1} / {session.questionIds.length}
           </Text>
-          {isHost && (
-            <View style={styles.answeredPill}>
-              <Text style={styles.answeredText}>{answeredCount} answered</Text>
-            </View>
-          )}
         </View>
 
         <Text style={styles.questionText}>{question.questionText}</Text>
@@ -298,12 +358,6 @@ export function GameScreen() {
           );
         })}
       </View>
-
-      {isHost && (
-        <TouchableOpacity style={styles.hostBtn} onPress={handleHostEndQuestion}>
-          <Text style={styles.hostBtnText}>End Question & Show Selection</Text>
-        </TouchableOpacity>
-      )}
 
       {myAnswer !== null && (
         <View style={styles.waitingBanner}>
@@ -447,6 +501,53 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
+  hostAnswerPreview: {
+    flex: 1,
+    padding: spacing[5],
+    gap: 10,
+    justifyContent: 'center',
+  },
+  hostAnswerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: spacing[4],
+    borderLeftWidth: 4,
+  },
+  hostAnswerShape: { fontSize: 22, width: 28 },
+  hostAnswerOptionText: {
+    fontSize: fontSize.base,
+    fontWeight: '700',
+    color: colors.white,
+    flex: 1,
+  },
+  hostSelectionBody: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing[6],
+    gap: 20,
+  },
+  hostStatCard: {
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    padding: spacing[6],
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    width: 160,
+  },
+  hostStatValue: { fontSize: 48, fontWeight: '900', color: colors.white },
+  hostStatLabel: { fontSize: fontSize.sm, color: colors.muted, marginTop: 4 },
+  hostWaitingText: {
+    fontSize: fontSize.sm,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 260,
+  },
   endScreen: {
     flex: 1,
     backgroundColor: colors.bg,

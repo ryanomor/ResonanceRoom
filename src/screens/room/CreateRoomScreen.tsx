@@ -11,6 +11,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { createRoom } from '../../hooks/useRooms';
+import { joinRoomAsHost } from '../../hooks/useParticipants';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { CitySearchInput } from '../../components/ui/CitySearchInput';
@@ -104,6 +105,7 @@ export function CreateRoomScreen() {
         venueAddress: venueAddress.trim(),
         requiresGenderParity: true,
       });
+      await joinRoomAsHost(room.id, appUser.id);
       router.replace(`/room/${room.id}`);
     } catch (e: any) {
       setError(e?.message ?? 'Failed to create room.');
