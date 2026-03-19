@@ -7,10 +7,12 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { signOut, updateProfile, deleteAccount } from '../../hooks/useAuth';
+import { usePhotoUpload } from '../../hooks/usePhotoUpload';
 import { Avatar } from '../../components/ui/Avatar';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
@@ -27,6 +29,7 @@ function formatCents(cents: number): string {
 export function ProfileScreen() {
   const router = useRouter();
   const appUser = useAuthStore((s) => s.appUser);
+  const { pickAndUpload, uploading: photoUploading, error: photoError } = usePhotoUpload();
   const [editing, setEditing] = useState(false);
   const [username, setUsername] = useState(appUser?.username ?? '');
   const [bio, setBio] = useState(appUser?.bio ?? '');
@@ -93,7 +96,25 @@ export function ProfileScreen() {
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.avatarSection}>
-          <Avatar name={appUser?.username} size="xl" />
+          <TouchableOpacity
+            onPress={pickAndUpload}
+            disabled={photoUploading}
+            activeOpacity={0.8}
+            style={styles.avatarTouchable}
+          >
+            <Avatar name={appUser?.username} uri={appUser?.avatarUrl} size="xl" />
+            <View style={styles.cameraOverlay}>
+              {photoUploading ? (
+                <ActivityIndicator color={colors.white} size="small" />
+              ) : (
+                <Text style={styles.cameraIcon}>📷</Text>
+              )}
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.changePhotoHint}>
+            {photoUploading ? 'Uploading...' : 'Tap to change photo'}
+          </Text>
+          {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
           <Text style={styles.name}>{appUser?.username}</Text>
           <Text style={styles.email}>{appUser?.email}</Text>
           {appUser?.bio && !editing ? (
@@ -273,10 +294,27 @@ const styles = StyleSheet.create({
   title: { fontSize: fontSize.xl, fontWeight: '900', color: colors.white },
   editBtn: { fontSize: fontSize.base, fontWeight: '600', color: colors.accent },
   content: { padding: spacing[5], gap: 16, paddingBottom: 100 },
-  avatarSection: { alignItems: 'center', paddingVertical: spacing[5] },
-  name: { fontSize: fontSize.xl, fontWeight: '800', color: colors.white, marginTop: 12 },
-  email: { fontSize: fontSize.sm, color: colors.muted, marginTop: 4 },
-  bio: { fontSize: fontSize.sm, color: colors.muted, marginTop: 8, textAlign: 'center', lineHeight: 22, maxWidth: 260 },
+  avatarSection: { alignItems: 'center', paddingVertical: spacing[5], gap: 6 },
+  avatarTouchable: { position: 'relative' },
+  cameraOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.bg,
+  },
+  cameraIcon: { fontSize: 14 },
+  changePhotoHint: { fontSize: fontSize.xs, color: colors.muted },
+  photoError: { fontSize: fontSize.xs, color: colors.error, textAlign: 'center', maxWidth: 240 },
+  name: { fontSize: fontSize.xl, fontWeight: '800', color: colors.white, marginTop: 6 },
+  email: { fontSize: fontSize.sm, color: colors.muted, marginTop: 2 },
+  bio: { fontSize: fontSize.sm, color: colors.muted, marginTop: 6, textAlign: 'center', lineHeight: 22, maxWidth: 260 },
   editForm: {},
   sectionTitle: { fontSize: fontSize.base, fontWeight: '700', color: colors.white, marginBottom: spacing[3] },
   statsRow: { flexDirection: 'row', gap: 12 },

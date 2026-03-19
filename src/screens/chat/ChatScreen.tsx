@@ -14,7 +14,8 @@ import { useAuthStore } from '../../store/authStore';
 import { useMessages, sendMessage, markRead } from '../../hooks/useChat';
 import { isMatchExpired } from '../../hooks/useMatches';
 import { colors, fontSize, spacing, radius } from '../../theme';
-import type { ChatMessage, Match } from '../../types';
+import { Avatar } from '../../components/ui/Avatar';
+import type { ChatMessage, Match, User } from '../../types';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
@@ -26,14 +27,22 @@ export function ChatScreen() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [match, setMatch] = useState<Match | null>(null);
+  const [otherUser, setOtherUser] = useState<User | null>(null);
   const listRef = useRef<FlatList>(null);
 
   useEffect(() => {
     if (!matchId) return;
-    getDoc(doc(db, 'matches', matchId)).then((snap) => {
-      if (snap.exists()) setMatch({ ...snap.data(), id: snap.id } as Match);
+    getDoc(doc(db, 'matches', matchId)).then(async (snap) => {
+      if (!snap.exists()) return;
+      const m = { ...snap.data(), id: snap.id } as Match;
+      setMatch(m);
+      if (appUser) {
+        const otherId = m.uid1 === appUser.id ? m.uid2 : m.uid1;
+        const userSnap = await getDoc(doc(db, 'users', otherId));
+        if (userSnap.exists()) setOtherUser(userSnap.data() as User);
+      }
     });
-  }, [matchId]);
+  }, [matchId, appUser?.id]);
 
   useEffect(() => {
     if (messages.length === 0 || !appUser) return;
@@ -85,12 +94,26 @@ export function ChatScreen() {
       keyboardVerticalOffset={0}
     >
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backTouchable}>
           <Text style={styles.back}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.topTitle}>
-          {match ? `${match.uid1 === appUser?.id ? match.uid2 : match.uid1}`.slice(0, 12) : 'Chat'}
-        </Text>
+        <TouchableOpacity
+          style={styles.topCenter}
+          onPress={() => {
+            if (otherUser) router.push(`/user/${otherUser.id}` as any);
+          }}
+          disabled={!otherUser}
+          activeOpacity={otherUser ? 0.7 : 1}
+        >
+          <Avatar
+            name={otherUser?.username}
+            uri={otherUser?.avatarUrl}
+            size="sm"
+          />
+          <Text style={styles.topTitle} numberOfLines={1}>
+            {otherUser?.username ?? 'Chat'}
+          </Text>
+        </TouchableOpacity>
         <View style={{ width: 60 }} />
       </View>
 
@@ -158,8 +181,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  backTouchable: { width: 60 },
   back: { fontSize: fontSize.base, color: colors.accent, fontWeight: '600' },
-  topTitle: { fontSize: fontSize.base, fontWeight: '800', color: colors.white },
+  topCenter: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  topTitle: { fontSize: fontSize.base, fontWeight: '800', color: colors.white, flexShrink: 1 },
   expiredBanner: {
     backgroundColor: `${colors.error}22`,
     padding: 10,
