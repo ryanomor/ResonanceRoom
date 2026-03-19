@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { updateProfile } from './useAuth';
@@ -12,18 +11,18 @@ function mimeToExt(mime: string): string {
   return 'jpg';
 }
 
-async function uriToBlob(uri: string, mimeType: string): Promise<Blob> {
-  if (uri.startsWith('data:')) {
-    const base64 = uri.split(',')[1];
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return new Blob([bytes], { type: mimeType });
-  }
-  const response = await fetch(uri);
-  return response.blob();
+function pickFileWeb(): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = () => {
+      const file = input.files?.[0] ?? null;
+      resolve(file);
+    };
+    input.oncancel = () => resolve(null);
+    input.click();
+  });
 }
 
 export function usePhotoUpload() {
@@ -34,35 +33,45 @@ export function usePhotoUpload() {
   async function pickAndUpload(): Promise<string | null> {
     setError(null);
 
-    if (Platform.OS !== 'web') {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        setError('Permission to access photos is required.');
-        return null;
-      }
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (result.canceled || !result.assets?.[0]) return null;
-
-    const asset = result.assets[0];
-    setUploading(true);
-
     try {
       const uid = appUser?.id;
       if (!uid) throw new Error('Not authenticated.');
 
-      const mimeType = asset.mimeType ?? 'image/jpeg';
+      let blob: Blob;
+      let mimeType: string;
+
+      if (Platform.OS === 'web') {
+        const file = await pickFileWeb();
+        if (!file) return null;
+        blob = file;
+        mimeType = file.type || 'image/jpeg';
+      } else {
+        const ImagePicker = await import('expo-image-picker');
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          setError('Permission to access photos is required.');
+          return null;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+
+        if (result.canceled || !result.assets?.[0]) return null;
+
+        const asset = result.assets[0];
+        mimeType = asset.mimeType ?? 'image/jpeg';
+        const response = await fetch(asset.uri);
+        blob = await response.blob();
+      }
+
+      setUploading(true);
+
       const ext = mimeToExt(mimeType);
       const fileName = `${uid}/avatar.${ext}`;
-
-      const blob = await uriToBlob(asset.uri, mimeType);
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
