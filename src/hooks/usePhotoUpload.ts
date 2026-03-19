@@ -1,15 +1,10 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { updateProfile } from './useAuth';
 import { useAuthStore } from '../store/authStore';
+import { updateProfile } from './useAuth';
 import { pickImage } from './pickImage';
 
-function mimeToExt(mime: string): string {
-  if (mime === 'image/png') return 'png';
-  if (mime === 'image/webp') return 'webp';
-  if (mime === 'image/gif') return 'gif';
-  return 'jpg';
-}
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
 export function usePhotoUpload() {
   const appUser = useAuthStore((s) => s.appUser);
@@ -28,25 +23,23 @@ export function usePhotoUpload() {
 
       setUploading(true);
 
-      const { blob, mimeType } = picked;
-      const ext = mimeToExt(mimeType);
-      const fileName = `${uid}/avatar.${ext}`;
+      const formData = new FormData();
+      formData.append('file', picked.blob, `avatar`);
+      formData.append('uid', uid);
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, blob, {
-          contentType: mimeType,
-          upsert: true,
-        });
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/upload-avatar`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+          body: formData,
+        }
+      );
 
-      if (uploadError) throw uploadError;
+      const json = await response.json();
+      if (!response.ok) throw new Error(json?.error ?? 'Upload failed');
 
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-
+      const publicUrl = `${json.publicUrl}?t=${Date.now()}`;
       await updateProfile({ avatarUrl: publicUrl });
 
       return publicUrl;
