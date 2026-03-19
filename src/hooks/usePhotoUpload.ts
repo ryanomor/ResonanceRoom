@@ -5,6 +5,27 @@ import { supabase } from '../lib/supabase';
 import { updateProfile } from './useAuth';
 import { useAuthStore } from '../store/authStore';
 
+function mimeToExt(mime: string): string {
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/webp') return 'webp';
+  if (mime === 'image/gif') return 'gif';
+  return 'jpg';
+}
+
+async function uriToBlob(uri: string, mimeType: string): Promise<Blob> {
+  if (uri.startsWith('data:')) {
+    const base64 = uri.split(',')[1];
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mimeType });
+  }
+  const response = await fetch(uri);
+  return response.blob();
+}
+
 export function usePhotoUpload() {
   const appUser = useAuthStore((s) => s.appUser);
   const [uploading, setUploading] = useState(false);
@@ -37,22 +58,16 @@ export function usePhotoUpload() {
       const uid = appUser?.id;
       if (!uid) throw new Error('Not authenticated.');
 
-      const ext = asset.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const mimeType = asset.mimeType ?? 'image/jpeg';
+      const ext = mimeToExt(mimeType);
       const fileName = `${uid}/avatar.${ext}`;
 
-      let blob: Blob;
-      if (Platform.OS === 'web') {
-        const response = await fetch(asset.uri);
-        blob = await response.blob();
-      } else {
-        const response = await fetch(asset.uri);
-        blob = await response.blob();
-      }
+      const blob = await uriToBlob(asset.uri, mimeType);
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, blob, {
-          contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+          contentType: mimeType,
           upsert: true,
         });
 
