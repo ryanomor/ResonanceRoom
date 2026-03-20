@@ -20,6 +20,7 @@ import { Card } from '../../components/ui/Card';
 import { CitySearchInput } from '../../components/ui/CitySearchInput';
 import { StripeConnectSection } from '../../components/ui/StripeConnectSection';
 import { getHostPayouts, type HostPayout } from '../../lib/payments';
+import { Camera } from 'lucide-react-native';
 import { colors, fontSize, spacing, radius } from '../../theme';
 
 function formatCents(cents: number): string {
@@ -107,7 +108,7 @@ export function ProfileScreen() {
               {photoUploading ? (
                 <ActivityIndicator color={colors.white} size="small" />
               ) : (
-                <Text style={styles.cameraIcon}>📷</Text>
+                <Camera size={14} color={colors.white} strokeWidth={1.5} />
               )}
             </View>
           </TouchableOpacity>
@@ -309,7 +310,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.bg,
   },
-  cameraIcon: { fontSize: 14 },
   changePhotoHint: { fontSize: fontSize.xs, color: colors.muted },
   photoError: { fontSize: fontSize.xs, color: colors.error, textAlign: 'center', maxWidth: 240 },
   name: { fontSize: fontSize.xl, fontWeight: '800', color: colors.white, marginTop: 6 },
