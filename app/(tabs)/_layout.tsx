@@ -1,26 +1,16 @@
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
-import { Hop as Home, Heart, Bell, User } from 'lucide-react-native';
-import { colors, fontSize } from '../../src/theme';
+import { House, Heart, Bell, User } from 'lucide-react-native';
+import { colors } from '../../src/theme';
 import { useNotifications } from '../../src/hooks/useNotifications';
 import { useMatches } from '../../src/hooks/useMatches';
 import { useAuthStore } from '../../src/store/authStore';
-
-function TabLabel({ label, focused }: { label: string; focused: boolean }) {
-  return (
-    <Text style={[styles.tabLabel, focused && styles.tabLabelFocused]}>{label}</Text>
-  );
-}
 
 function NotifIcon({ focused }: { focused: boolean }) {
   const { unseen } = useNotifications();
   return (
     <View>
-      <Bell
-        size={22}
-        color={focused ? colors.primary : colors.muted}
-        strokeWidth={1.5}
-      />
+      <Bell size={22} color={focused ? colors.primary : colors.muted} strokeWidth={1.5} />
       {unseen > 0 && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{unseen > 9 ? '9+' : unseen}</Text>
@@ -36,11 +26,7 @@ function MatchIcon({ focused }: { focused: boolean }) {
   const activeCount = matches.filter((m) => m.status === 'active').length;
   return (
     <View>
-      <Heart
-        size={22}
-        color={focused ? colors.primary : colors.muted}
-        strokeWidth={1.5}
-      />
+      <Heart size={22} color={focused ? colors.primary : colors.muted} strokeWidth={1.5} />
       {activeCount > 0 && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{activeCount > 9 ? '9+' : activeCount}</Text>
@@ -56,38 +42,32 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.muted,
-        tabBarLabelStyle: styles.tabLabel,
+        tabBarShowLabel: false,
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          tabBarLabel: ({ focused }) => <TabLabel label="Home" focused={focused} />,
           tabBarIcon: ({ focused }) => (
-            <Home size={22} color={focused ? colors.primary : colors.muted} strokeWidth={1.5} />
+            <House size={22} color={focused ? colors.primary : colors.muted} strokeWidth={1.5} />
           ),
         }}
       />
       <Tabs.Screen
         name="matches"
         options={{
-          tabBarLabel: ({ focused }) => <TabLabel label="Matches" focused={focused} />,
           tabBarIcon: ({ focused }) => <MatchIcon focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="notifications"
         options={{
-          tabBarLabel: ({ focused }) => <TabLabel label="Alerts" focused={focused} />,
           tabBarIcon: ({ focused }) => <NotifIcon focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          tabBarLabel: ({ focused }) => <TabLabel label="Profile" focused={focused} />,
           tabBarIcon: ({ focused }) => (
             <User size={22} color={focused ? colors.primary : colors.muted} strokeWidth={1.5} />
           ),
@@ -102,17 +82,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    height: 80,
-    paddingBottom: 16,
-    paddingTop: 10,
-  },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.muted,
-  },
-  tabLabelFocused: {
-    color: colors.primary,
+    height: 64,
+    paddingBottom: 8,
+    paddingTop: 8,
   },
   badge: {
     position: 'absolute',
