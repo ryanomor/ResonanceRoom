@@ -19,6 +19,7 @@ export interface User {
   email: string;
   username: string;
   avatarUrl?: string;
+  photos?: string[];
   city: string;
   bio?: string;
   gender: Gender;

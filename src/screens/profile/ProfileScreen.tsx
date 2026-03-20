@@ -7,20 +7,18 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { signOut, updateProfile, deleteAccount } from '../../hooks/useAuth';
-import { usePhotoUpload } from '../../hooks/usePhotoUpload';
-import { Avatar } from '../../components/ui/Avatar';
+import { usePhotoManager } from '../../hooks/usePhotoManager';
+import { PhotoGallery } from '../../components/ui/PhotoGallery';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { CitySearchInput } from '../../components/ui/CitySearchInput';
 import { StripeConnectSection } from '../../components/ui/StripeConnectSection';
 import { getHostPayouts, type HostPayout } from '../../lib/payments';
-import { Camera } from 'lucide-react-native';
 import { colors, fontSize, spacing, radius } from '../../theme';
 
 function formatCents(cents: number): string {
@@ -30,7 +28,16 @@ function formatCents(cents: number): string {
 export function ProfileScreen() {
   const router = useRouter();
   const appUser = useAuthStore((s) => s.appUser);
-  const { pickAndUpload, uploading: photoUploading, error: photoError } = usePhotoUpload();
+  const {
+    photos,
+    uploadPhoto,
+    deletePhoto,
+    reorderPhotos,
+    uploadingSlot,
+    deletingSlot,
+    error: photoError,
+    canAddMore,
+  } = usePhotoManager();
   const [editing, setEditing] = useState(false);
   const [username, setUsername] = useState(appUser?.username ?? '');
   const [bio, setBio] = useState(appUser?.bio ?? '');
@@ -97,24 +104,16 @@ export function ProfileScreen() {
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.avatarSection}>
-          <TouchableOpacity
-            onPress={pickAndUpload}
-            disabled={photoUploading}
-            activeOpacity={0.8}
-            style={styles.avatarTouchable}
-          >
-            <Avatar name={appUser?.username} uri={appUser?.avatarUrl} size="xl" />
-            <View style={styles.cameraOverlay}>
-              {photoUploading ? (
-                <ActivityIndicator color={colors.white} size="small" />
-              ) : (
-                <Camera size={14} color={colors.white} strokeWidth={1.5} />
-              )}
-            </View>
-          </TouchableOpacity>
-          <Text style={styles.changePhotoHint}>
-            {photoUploading ? 'Uploading...' : 'Tap to change photo'}
-          </Text>
+          <PhotoGallery
+            photos={photos}
+            onUpload={uploadPhoto}
+            onDelete={deletePhoto}
+            onMoveLeft={(i) => reorderPhotos(i, i - 1)}
+            onMoveRight={(i) => reorderPhotos(i, i + 1)}
+            uploadingSlot={uploadingSlot}
+            deletingSlot={deletingSlot}
+            canAddMore={canAddMore}
+          />
           {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
           <Text style={styles.name}>{appUser?.username}</Text>
           <Text style={styles.email}>{appUser?.email}</Text>
@@ -295,24 +294,9 @@ const styles = StyleSheet.create({
   title: { fontSize: fontSize.xl, fontWeight: '900', color: colors.white },
   editBtn: { fontSize: fontSize.base, fontWeight: '600', color: colors.accent },
   content: { padding: spacing[5], gap: 16, paddingBottom: 100 },
-  avatarSection: { alignItems: 'center', paddingVertical: spacing[5], gap: 6 },
-  avatarTouchable: { position: 'relative' },
-  cameraOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.bg,
-  },
-  changePhotoHint: { fontSize: fontSize.xs, color: colors.muted },
-  photoError: { fontSize: fontSize.xs, color: colors.error, textAlign: 'center', maxWidth: 240 },
-  name: { fontSize: fontSize.xl, fontWeight: '800', color: colors.white, marginTop: 6 },
+  avatarSection: { alignItems: 'center', paddingVertical: spacing[5], gap: 8 },
+  photoError: { fontSize: fontSize.xs, color: colors.error, textAlign: 'center', maxWidth: 280 },
+  name: { fontSize: fontSize.xl, fontWeight: '800', color: colors.white, marginTop: 4 },
   email: { fontSize: fontSize.sm, color: colors.muted, marginTop: 2 },
   bio: { fontSize: fontSize.sm, color: colors.muted, marginTop: 6, textAlign: 'center', lineHeight: 22, maxWidth: 260 },
   editForm: {},

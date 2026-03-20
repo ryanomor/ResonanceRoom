@@ -8,13 +8,15 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/authStore';
 import { signOut, updateProfile, deleteAccount } from '../../hooks/useAuth';
-import { usePhotoUpload } from '../../hooks/usePhotoUpload';
+import { usePhotoManager } from '../../hooks/usePhotoManager';
+import { PhotoGallery } from '../../components/ui/PhotoGallery';
 import { Avatar } from '../../components/ui/Avatar';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -47,7 +49,16 @@ export function MatchUserProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [payouts, setPayouts] = useState<HostPayout[]>([]);
   const [payoutsLoading, setPayoutsLoading] = useState(false);
-  const { pickAndUpload, uploading: photoUploading, error: photoError } = usePhotoUpload();
+  const {
+    photos,
+    uploadPhoto,
+    deletePhoto,
+    reorderPhotos,
+    uploadingSlot,
+    deletingSlot,
+    error: photoError,
+    canAddMore,
+  } = usePhotoManager();
 
   useEffect(() => {
     const targetId = isSelf ? appUser?.id : userId;
@@ -157,24 +168,16 @@ export function MatchUserProfileScreen() {
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.avatarSection}>
-            <TouchableOpacity
-              onPress={pickAndUpload}
-              disabled={photoUploading}
-              activeOpacity={0.8}
-              style={styles.avatarTouchable}
-            >
-              <Avatar name={profile.username} uri={appUser?.avatarUrl ?? profile.avatarUrl} size="xl" />
-              <View style={styles.cameraOverlay}>
-                {photoUploading ? (
-                  <ActivityIndicator color={colors.white} size="small" />
-                ) : (
-                  <Text style={styles.cameraIcon}>📷</Text>
-                )}
-              </View>
-            </TouchableOpacity>
-            <Text style={styles.changePhotoHint}>
-              {photoUploading ? 'Uploading...' : 'Tap to change photo'}
-            </Text>
+            <PhotoGallery
+              photos={photos}
+              onUpload={uploadPhoto}
+              onDelete={deletePhoto}
+              onMoveLeft={(i) => reorderPhotos(i, i - 1)}
+              onMoveRight={(i) => reorderPhotos(i, i + 1)}
+              uploadingSlot={uploadingSlot}
+              deletingSlot={deletingSlot}
+              canAddMore={canAddMore}
+            />
             {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
             <Text style={styles.name}>{profile.username}</Text>
             <Text style={styles.email}>{profile.email}</Text>
@@ -344,9 +347,28 @@ export function MatchUserProfileScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroSection}>
-          <View style={styles.avatarWrapper}>
-            <Avatar name={profile.username} uri={profile.avatarUrl} size="xl" />
-          </View>
+          {(profile.photos?.length ?? 0) > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.photoStrip}
+            >
+              {(profile.photos ?? []).map((url, i) => (
+                <View key={i} style={styles.photoStripItem}>
+                  <Image source={{ uri: url }} style={styles.photoStripImage} resizeMode="cover" />
+                  {i === 0 && (
+                    <View style={styles.photoStripPrimary}>
+                      <Text style={styles.photoStripPrimaryText}>Primary</Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.avatarWrapper}>
+              <Avatar name={profile.username} uri={profile.avatarUrl} size="xl" />
+            </View>
+          )}
           <Text style={styles.name}>{profile.username}</Text>
           {profile.city ? (
             <View style={styles.locationRow}>
@@ -471,24 +493,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   content: { padding: spacing[5], gap: 16, paddingBottom: 100 },
-  avatarSection: { alignItems: 'center', paddingVertical: spacing[5], gap: 6 },
-  avatarTouchable: { position: 'relative' },
-  cameraOverlay: {
+  avatarSection: { alignItems: 'center', paddingVertical: spacing[5], gap: 8 },
+  photoError: { fontSize: fontSize.xs, color: colors.error, textAlign: 'center', maxWidth: 280 },
+  photoStrip: { gap: 10, paddingHorizontal: spacing[5], paddingVertical: 4 },
+  photoStripItem: { position: 'relative', borderRadius: radius.lg, overflow: 'hidden' },
+  photoStripImage: { width: 120, height: 150, borderRadius: radius.lg },
+  photoStripPrimary: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.bg,
+    bottom: 6,
+    left: 6,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderRadius: radius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: `${colors.yellow}55`,
   },
-  cameraIcon: { fontSize: 14 },
-  changePhotoHint: { fontSize: fontSize.xs, color: colors.muted },
-  photoError: { fontSize: fontSize.xs, color: colors.error, textAlign: 'center', maxWidth: 240 },
+  photoStripPrimaryText: { fontSize: 9, fontWeight: '700', color: colors.yellow, letterSpacing: 0.3 },
   heroSection: { alignItems: 'center', paddingVertical: spacing[5], gap: 8 },
   avatarWrapper: { position: 'relative' },
   name: { fontSize: fontSize['2xl'], fontWeight: '900', color: colors.white, marginTop: 4 },

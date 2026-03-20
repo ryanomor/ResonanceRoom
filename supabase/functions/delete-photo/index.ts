@@ -12,14 +12,11 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    const uid = formData.get("uid") as string | null;
-    const slotRaw = formData.get("slot") as string | null;
+    const { uid, fileName } = await req.json();
 
-    if (!file || !uid) {
+    if (!uid || !fileName) {
       return new Response(
-        JSON.stringify({ error: "Missing file or uid" }),
+        JSON.stringify({ error: "Missing uid or fileName" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -31,10 +28,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const slot = slotRaw !== null ? parseInt(slotRaw, 10) : 0;
-    if (isNaN(slot) || slot < 0 || slot > 4) {
+    if (!fileName.startsWith(`${uid}/photo_`) || !/^[a-zA-Z0-9_\-./]+$/.test(fileName)) {
       return new Response(
-        JSON.stringify({ error: "Invalid slot. Must be 0-4." }),
+        JSON.stringify({ error: "Invalid fileName" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -44,33 +40,19 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const mimeType = file.type || "image/jpeg";
-    const ext = mimeType === "image/png" ? "png"
-      : mimeType === "image/webp" ? "webp"
-      : mimeType === "image/gif" ? "gif"
-      : "jpg";
-
-    const fileName = `${uid}/photo_${slot}.${ext}`;
-    const arrayBuffer = await file.arrayBuffer();
-    const blob = new Blob([arrayBuffer], { type: mimeType });
-
-    const { error: uploadError } = await supabase.storage
+    const { error: removeError } = await supabase.storage
       .from("avatars")
-      .upload(fileName, blob, { contentType: mimeType, upsert: true });
+      .remove([fileName]);
 
-    if (uploadError) throw uploadError;
-
-    const { data: urlData } = supabase.storage
-      .from("avatars")
-      .getPublicUrl(fileName);
+    if (removeError) throw removeError;
 
     return new Response(
-      JSON.stringify({ publicUrl: urlData.publicUrl, slot }),
+      JSON.stringify({ success: true }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e: any) {
     return new Response(
-      JSON.stringify({ error: e?.message ?? "Upload failed" }),
+      JSON.stringify({ error: e?.message ?? "Delete failed" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

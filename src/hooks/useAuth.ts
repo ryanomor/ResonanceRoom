@@ -73,6 +73,7 @@ export async function signUp(
     totalMatches: 0,
     favoriteCities: [],
     dismissedNotificationIds: [],
+    photos: [],
   };
   await setDoc(doc(db, 'users', cred.user.uid), user);
   useAuthStore.getState().setAppUser(user);
@@ -181,6 +182,7 @@ export async function completeSocialSignUp(
     totalMatches: 0,
     favoriteCities: [],
     dismissedNotificationIds: [],
+    photos: [],
   };
 
   await setDoc(doc(db, 'users', pending.uid), user);
