@@ -121,7 +121,7 @@ export function CreateRoomScreen() {
         venueAddress: venueAddress.trim(),
         requiresGenderParity: true,
       });
-      await joinRoomAsHost(room.id, appUser.id);
+      await joinRoomAsHost(room.id, appUser.id, appUser.username, appUser.avatarUrl);
       router.replace(`/room/${room.id}`);
     } catch (e: any) {
       setError(e?.message ?? 'Failed to create room.');
