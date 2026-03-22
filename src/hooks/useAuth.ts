@@ -10,7 +10,7 @@ import {
   signInWithCredential,
   signInWithPopup,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Platform } from 'react-native';
 import { auth, db } from '../lib/firebase';
 import { useAuthStore } from '../store/authStore';
@@ -205,6 +205,25 @@ export async function updateProfile(updates: Partial<User>) {
   const current = useAuthStore.getState().appUser;
   if (current) {
     useAuthStore.getState().setAppUser({ ...current, ...updates, updatedAt: now });
+  }
+
+  const participantUpdates: Record<string, string> = {};
+  if (updates.username !== undefined) participantUpdates.username = updates.username;
+  if (updates.avatarUrl !== undefined) participantUpdates.avatarUrl = updates.avatarUrl;
+
+  if (Object.keys(participantUpdates).length > 0) {
+    try {
+      const q = query(collection(db, 'roomParticipants'), where('userId', '==', uid));
+      const snap = await getDocs(q);
+      const syncNow = new Date().toISOString();
+      await Promise.all(
+        snap.docs.map((d) =>
+          updateDoc(d.ref, { ...participantUpdates, updatedAt: syncNow })
+        )
+      );
+    } catch {
+      // non-blocking
+    }
   }
 }
 

@@ -13,6 +13,7 @@ import type { AppNotification } from '../../types';
 
 const TYPE_ICONS: Record<string, string> = {
   gameStartingSoon: '🎮',
+  joinRequest: '🙋',
   joinRequestUpdate: '✅',
   newCityGame: '🏙️',
 };

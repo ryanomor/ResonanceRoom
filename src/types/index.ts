@@ -118,6 +118,7 @@ export interface ChatMessage {
 
 export interface AppNotification {
   id: string;
+  userId: string;
   type: AppNotificationType;
   title: string;
   message?: string;

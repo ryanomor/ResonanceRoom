@@ -5,6 +5,7 @@ import {
   where,
   onSnapshot,
   setDoc,
+  getDoc,
   doc,
   updateDoc,
 } from 'firebase/firestore';
@@ -12,6 +13,20 @@ import { db } from '../lib/firebase';
 import { createClient } from '@supabase/supabase-js';
 import type { RoomParticipant, ParticipantStatus } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+
+async function createNotification(userId: string, type: string, title: string, message: string) {
+  const now = new Date().toISOString();
+  const id = uuidv4();
+  await setDoc(doc(db, 'notifications', id), {
+    id,
+    userId,
+    type,
+    title,
+    message,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
 
 const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_URL!,
@@ -55,6 +70,23 @@ export async function joinRoom(
     updatedAt: now,
   };
   await setDoc(doc(db, 'roomParticipants', p.id), p);
+
+  try {
+    const roomSnap = await getDoc(doc(db, 'rooms', roomId));
+    if (roomSnap.exists()) {
+      const room = roomSnap.data();
+      const displayName = username ?? 'Someone';
+      await createNotification(
+        room.hostId,
+        'joinRequest',
+        'New Join Request',
+        `${displayName} wants to join your room "${room.title}".`
+      );
+    }
+  } catch {
+    // non-blocking
+  }
+
   return p;
 }
 
@@ -90,6 +122,28 @@ export async function updateParticipantStatus(id: string, status: ParticipantSta
     ...(status === 'approved' ? { approvedAt: new Date().toISOString() } : {}),
     ...(status === 'paid' ? { paidAt: new Date().toISOString() } : {}),
   });
+
+  if (status === 'approved' || status === 'rejected') {
+    try {
+      const participantSnap = await getDoc(doc(db, 'roomParticipants', id));
+      if (participantSnap.exists()) {
+        const participant = participantSnap.data();
+        const roomSnap = await getDoc(doc(db, 'rooms', participant.roomId));
+        const roomTitle = roomSnap.exists() ? roomSnap.data().title : 'the room';
+        const isApproved = status === 'approved';
+        await createNotification(
+          participant.userId,
+          'joinRequestUpdate',
+          isApproved ? 'Request Approved!' : 'Request Declined',
+          isApproved
+            ? `Your request to join "${roomTitle}" has been approved.`
+            : `Your request to join "${roomTitle}" was not approved.`
+        );
+      }
+    } catch {
+      // non-blocking
+    }
+  }
 }
 
 export async function markParticipantPaid(id: string, stripeSessionId: string) {
