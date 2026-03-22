@@ -7,7 +7,7 @@ import {
   setDoc,
   doc,
   updateDoc,
-  getDocs,
+  getDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { createClient } from '@supabase/supabase-js';
@@ -25,22 +25,18 @@ async function enrichWithUserProfiles(raw: RoomParticipant[]): Promise<RoomParti
   const userIds = [...new Set(raw.map((p) => p.userId))];
 
   const userSnaps = await Promise.all(
-    userIds.map((uid) =>
-      getDocs(query(collection(db, 'users'), where('id', '==', uid)))
-    )
+    userIds.map((uid) => getDoc(doc(db, 'users', uid)))
   );
 
   const profileMap: Record<string, { username?: string; avatarUrl?: string }> = {};
   userSnaps.forEach((snap) => {
-    snap.docs.forEach((d) => {
-      const data = d.data();
-      if (data.id) {
-        profileMap[data.id] = {
-          username: data.username,
-          avatarUrl: data.avatarUrl,
-        };
-      }
-    });
+    if (snap.exists()) {
+      const data = snap.data();
+      profileMap[snap.id] = {
+        username: data.username,
+        avatarUrl: data.avatarUrl,
+      };
+    }
   });
 
   return raw.map((p) => {
