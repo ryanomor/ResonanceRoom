@@ -237,7 +237,7 @@ export function RoomDetailScreen() {
             return (
               <View key={p.id} style={styles.participantRow}>
                 <Avatar uri={p.avatarUrl} size="sm" />
-                <Text style={styles.participantId}>{p.userId.slice(0, 8)}...</Text>
+                <Text style={styles.participantId}>{p.username}</Text>
                 {isPaidRoom ? (
                   isPaid ? (
                     <View style={[styles.statusBadge, styles.paidBadge]}>
