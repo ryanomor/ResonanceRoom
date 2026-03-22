@@ -191,7 +191,7 @@ export function RoomDetailScreen() {
               .filter((p) => p.status === 'pending')
               .map((p) => (
                 <View key={p.id} style={styles.participantRow}>
-                  <Avatar name={p.userId} size="sm" />
+                  <Avatar uri={p.avatarUrl} size="sm" />
                   <Text style={styles.participantId}>{p.userId.slice(0, 8)}...</Text>
                   <View style={styles.actions}>
                     <TouchableOpacity
@@ -236,7 +236,7 @@ export function RoomDetailScreen() {
             const isPaid = isPaidRoom ? paidParticipantIds.has(p.id) : true;
             return (
               <View key={p.id} style={styles.participantRow}>
-                <Avatar name={p.userId} size="sm" />
+                <Avatar uri={p.avatarUrl} size="sm" />
                 <Text style={styles.participantId}>{p.userId.slice(0, 8)}...</Text>
                 {isPaidRoom ? (
                   isPaid ? (
