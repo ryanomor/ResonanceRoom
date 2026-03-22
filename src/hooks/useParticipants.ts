@@ -7,6 +7,7 @@ import {
   setDoc,
   doc,
   updateDoc,
+  getDocs,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { createClient } from '@supabase/supabase-js';
@@ -18,14 +19,51 @@ const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+async function enrichWithUserProfiles(raw: RoomParticipant[]): Promise<RoomParticipant[]> {
+  if (raw.length === 0) return raw;
+
+  const userIds = [...new Set(raw.map((p) => p.userId))];
+
+  const userSnaps = await Promise.all(
+    userIds.map((uid) =>
+      getDocs(query(collection(db, 'users'), where('id', '==', uid)))
+    )
+  );
+
+  const profileMap: Record<string, { username?: string; avatarUrl?: string }> = {};
+  userSnaps.forEach((snap) => {
+    snap.docs.forEach((d) => {
+      const data = d.data();
+      if (data.id) {
+        profileMap[data.id] = {
+          username: data.username,
+          avatarUrl: data.avatarUrl,
+        };
+      }
+    });
+  });
+
+  return raw.map((p) => {
+    const profile = profileMap[p.userId];
+    if (!profile) return p;
+    return {
+      ...p,
+      username: profile.username ?? p.username,
+      avatarUrl: profile.avatarUrl ?? p.avatarUrl,
+    };
+  });
+}
+
 export function useParticipants(roomId: string | null) {
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
 
   useEffect(() => {
     if (!roomId) return;
     const q = query(collection(db, 'roomParticipants'), where('roomId', '==', roomId));
-    const unsub = onSnapshot(q, (snap) => {
-      setParticipants(snap.docs.map((d) => ({ ...d.data(), id: d.id } as RoomParticipant)));
+    const unsub = onSnapshot(q, async (snap) => {
+      const raw = snap.docs.map((d) => ({ ...d.data(), id: d.id } as RoomParticipant));
+      const enriched = await enrichWithUserProfiles(raw);
+      setParticipants(enriched);
     });
     return unsub;
   }, [roomId]);

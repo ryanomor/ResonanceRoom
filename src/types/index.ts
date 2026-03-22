@@ -81,9 +81,9 @@ export interface GameSession {
 export interface RoomParticipant {
   id: string;
   roomId: string;
-  avatarUrl: string;
+  avatarUrl?: string;
   userId: string;
-  username: string;
+  username?: string;
   status: ParticipantStatus;
   role: ParticipantRole;
   requestedAt: string;
