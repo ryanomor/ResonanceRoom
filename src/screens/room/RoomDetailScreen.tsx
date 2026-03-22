@@ -192,7 +192,7 @@ export function RoomDetailScreen() {
               .map((p) => (
                 <View key={p.id} style={styles.participantRow}>
                   <Avatar uri={p.avatarUrl} size="sm" />
-                  <Text style={styles.participantId}>{p.userId.slice(0, 8)}...</Text>
+                  <Text style={styles.participantId}>{p.username}</Text>
                   <View style={styles.actions}>
                     <TouchableOpacity
                       style={[styles.actionBtn, styles.approveBtn]}
