@@ -51,9 +51,10 @@ service cloud.firestore {
 //      );
 //    }
 
-    // USERS: each user can only read/write their own profile
+    // USERS: own profile always readable/writable; any signed-in user can fetch
+    // a profile by UID (get only — list is blocked to prevent bulk enumeration)
     match /users/{userId} {
-      allow get: if isSelf(userId);
+      allow get: if signedIn();
       allow list: if false;
       allow create: if isSelf(request.resource.data.id);
       allow update: if isSelf(userId);

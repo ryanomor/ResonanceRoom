@@ -74,7 +74,7 @@ export function RoomDetailScreen() {
     if (!appUser || !id) return;
     setJoining(true);
     try {
-      await joinRoom(id, appUser.id, appUser.username, appUser.avatarUrl);
+      await joinRoom(id, appUser.id);
     } catch (e: any) {
       Alert.alert('Error', e?.message ?? 'Could not join room.');
     } finally {

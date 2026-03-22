@@ -7,6 +7,7 @@ import {
   setDoc,
   doc,
   updateDoc,
+  getDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { createClient } from '@supabase/supabase-js';
@@ -18,15 +19,47 @@ const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+async function enrichWithUserProfiles(raw: RoomParticipant[]): Promise<RoomParticipant[]> {
+  if (raw.length === 0) return raw;
+
+  const userIds = [...new Set(raw.map((p) => p.userId))];
+
+  const userSnaps = await Promise.all(
+    userIds.map((uid) => getDoc(doc(db, 'users', uid)))
+  );
+
+  const profileMap: Record<string, { username?: string; avatarUrl?: string }> = {};
+  userSnaps.forEach((snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      profileMap[snap.id] = {
+        username: data.username,
+        avatarUrl: data.avatarUrl,
+      };
+    }
+  });
+
+  return raw.map((p) => {
+    const profile = profileMap[p.userId];
+    if (!profile) return p;
+    return {
+      ...p,
+      username: profile.username ?? p.username,
+      avatarUrl: profile.avatarUrl ?? p.avatarUrl,
+    };
+  });
+}
+
 export function useParticipants(roomId: string | null) {
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
 
   useEffect(() => {
     if (!roomId) return;
     const q = query(collection(db, 'roomParticipants'), where('roomId', '==', roomId));
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = onSnapshot(q, async (snap) => {
       const raw = snap.docs.map((d) => ({ ...d.data(), id: d.id } as RoomParticipant));
-      setParticipants(raw);
+      const enriched = await enrichWithUserProfiles(raw);
+      setParticipants(enriched);
     });
     return unsub;
   }, [roomId]);
@@ -34,19 +67,12 @@ export function useParticipants(roomId: string | null) {
   return participants;
 }
 
-export async function joinRoom(
-  roomId: string,
-  userId: string,
-  username?: string,
-  avatarUrl?: string,
-): Promise<RoomParticipant> {
+export async function joinRoom(roomId: string, userId: string): Promise<RoomParticipant> {
   const now = new Date().toISOString();
   const p: RoomParticipant = {
     id: uuidv4(),
     roomId,
     userId,
-    username,
-    avatarUrl,
     status: 'pending',
     role: 'player',
     requestedAt: now,
@@ -58,19 +84,12 @@ export async function joinRoom(
   return p;
 }
 
-export async function joinRoomAsHost(
-  roomId: string,
-  userId: string,
-  username?: string,
-  avatarUrl?: string,
-): Promise<RoomParticipant> {
+export async function joinRoomAsHost(roomId: string, userId: string): Promise<RoomParticipant> {
   const now = new Date().toISOString();
   const p: RoomParticipant = {
     id: uuidv4(),
     roomId,
     userId,
-    username,
-    avatarUrl,
     status: 'approved',
     role: 'host',
     requestedAt: now,
