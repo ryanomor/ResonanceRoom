@@ -8,9 +8,11 @@ import {
   Platform,
   Alert,
   Linking,
+  Modal,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { getRoomById } from '../../hooks/useRooms';
+import { getRoomById, updateRoom } from '../../hooks/useRooms';
 import {
   useParticipants,
   joinRoom,
@@ -21,11 +23,134 @@ import { useAuthStore } from '../../store/authStore';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
+import { CitySearchInput } from '../../components/ui/CitySearchInput';
+import { VenueSearchInput } from '../../components/ui/VenueSearchInput';
+import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import { colors, fontSize, spacing, radius } from '../../theme';
 import { createPaymentLink, getPaymentStatus } from '../../lib/payments';
 import type { Room, RoomParticipant } from '../../types';
 
 const MIN_PLAYERS_RATIO = 0.5;
+
+function EditRoomModal({
+  room,
+  visible,
+  onClose,
+  onSaved,
+}: {
+  room: Room;
+  visible: boolean;
+  onClose: () => void;
+  onSaved: (updated: Room) => void;
+}) {
+  const [title, setTitle] = useState(room.title);
+  const [description, setDescription] = useState(room.description);
+  const [city, setCity] = useState(room.city);
+  const [venueAddress, setVenueAddress] = useState(room.venueAddress ?? '');
+  const [maxParticipants, setMaxParticipants] = useState(String(room.maxParticipants));
+  const [entryFee, setEntryFee] = useState(String(room.entryFee));
+  const [scheduledStart, setScheduledStart] = useState(new Date(room.scheduledStart));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSave() {
+    if (!title.trim()) { setError('Title is required.'); return; }
+    if (!city.trim()) { setError('City is required.'); return; }
+    setError('');
+    setSaving(true);
+    try {
+      const parsedMax = parseInt(maxParticipants) || room.maxParticipants;
+      const parsedFee = parseFloat(entryFee) || 0;
+      const updates: Partial<Room> = {
+        title: title.trim(),
+        description: description.trim(),
+        city: city.trim(),
+        venueAddress: venueAddress.trim() || undefined,
+        maxParticipants: parsedMax,
+        entryFee: parsedFee,
+        scheduledStart: scheduledStart.toISOString(),
+      };
+      await updateRoom(room.id, updates);
+      onSaved({ ...room, ...updates });
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not save changes.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={styles.modalContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.modalTopBar}>
+          <TouchableOpacity onPress={onClose}>
+            <Text style={styles.modalCancel}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.modalTitle}>Edit Room</Text>
+          <TouchableOpacity onPress={handleSave} disabled={saving}>
+            <Text style={[styles.modalSave, saving && { opacity: 0.5 }]}>
+              {saving ? 'Saving...' : 'Save'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
+          {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
+
+          <Text style={styles.sectionLabel}>Room Details</Text>
+          <Input label="Title" value={title} onChangeText={setTitle} maxLength={60} />
+          <Input
+            label="Description"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            numberOfLines={3}
+            containerStyle={{ marginTop: 14 }}
+            style={{ height: 80, paddingTop: 12 }}
+          />
+
+          <Text style={[styles.sectionLabel, { marginTop: spacing[5] }]}>Location</Text>
+          <CitySearchInput label="City" value={city} onSelect={setCity} containerStyle={{ zIndex: 200 }} />
+          <VenueSearchInput
+            label="Venue Address"
+            value={venueAddress}
+            onSelect={setVenueAddress}
+            cityBias={city}
+            placeholder="Search venue or address..."
+            containerStyle={{ marginTop: 14, zIndex: 100 }}
+          />
+
+          <Text style={[styles.sectionLabel, { marginTop: spacing[5] }]}>Game Settings</Text>
+          <View style={styles.row}>
+            <Input
+              label="Max Players"
+              value={maxParticipants}
+              onChangeText={setMaxParticipants}
+              keyboardType="number-pad"
+              containerStyle={{ flex: 1 }}
+            />
+            <Input
+              label="Entry Fee ($)"
+              value={entryFee}
+              onChangeText={setEntryFee}
+              keyboardType="decimal-pad"
+              containerStyle={{ flex: 1 }}
+            />
+          </View>
+
+          <View style={{ marginTop: 14, gap: 6 }}>
+            <Text style={styles.fieldLabel}>Scheduled Start</Text>
+            <DateTimePicker value={scheduledStart} onChange={setScheduledStart} />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
 
 export function RoomDetailScreen() {
   const router = useRouter();
@@ -36,6 +161,7 @@ export function RoomDetailScreen() {
   const [joining, setJoining] = useState(false);
   const [payingLink, setPayingLink] = useState(false);
   const [checkingPayment, setCheckingPayment] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
 
   const participants = useParticipants(id ?? null);
   const paidParticipantIds = usePaidParticipantIds(id ?? null);
@@ -125,6 +251,11 @@ export function RoomDetailScreen() {
     }
   }, [myParticipant, room]);
 
+  function handlePlayerPress(p: RoomParticipant) {
+    if (p.userId === appUser?.id) return;
+    router.push(`/user/${p.userId}`);
+  }
+
   if (loading || !room) {
     return (
       <View style={styles.loading}>
@@ -142,7 +273,13 @@ export function RoomDetailScreen() {
           <Text style={styles.back}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.topTitle} numberOfLines={1}>{room.title}</Text>
-        <View style={{ width: 60 }} />
+        {isHost && room.status === 'waiting' ? (
+          <TouchableOpacity onPress={() => setEditModalVisible(true)}>
+            <Text style={styles.editBtn}>Edit</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -190,9 +327,14 @@ export function RoomDetailScreen() {
             {participants
               .filter((p) => p.status === 'pending')
               .map((p) => (
-                <View key={p.id} style={styles.participantRow}>
+                <TouchableOpacity
+                  key={p.id}
+                  style={styles.participantRow}
+                  onPress={() => handlePlayerPress(p)}
+                  activeOpacity={p.userId === appUser?.id ? 1 : 0.7}
+                >
                   <Avatar uri={p.avatarUrl} size="sm" />
-                  <Text style={styles.participantId}>{p.username}</Text>
+                  <Text style={styles.participantName}>{p.username}</Text>
                   <View style={styles.actions}>
                     <TouchableOpacity
                       style={[styles.actionBtn, styles.approveBtn]}
@@ -207,7 +349,7 @@ export function RoomDetailScreen() {
                       <Text style={styles.rejectText}>Reject</Text>
                     </TouchableOpacity>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
           </Card>
         )}
@@ -234,10 +376,16 @@ export function RoomDetailScreen() {
 
           {approvedPlayers.map((p) => {
             const isPaid = isPaidRoom ? paidParticipantIds.has(p.id) : true;
+            const isSelf = p.userId === appUser?.id;
             return (
-              <View key={p.id} style={styles.participantRow}>
+              <TouchableOpacity
+                key={p.id}
+                style={styles.participantRow}
+                onPress={() => handlePlayerPress(p)}
+                activeOpacity={isSelf ? 1 : 0.7}
+              >
                 <Avatar uri={p.avatarUrl} size="sm" />
-                <Text style={styles.participantId}>{p.username}</Text>
+                <Text style={styles.participantName}>{p.username}{isSelf ? ' (you)' : ''}</Text>
                 {isPaidRoom ? (
                   isPaid ? (
                     <View style={[styles.statusBadge, styles.paidBadge]}>
@@ -253,7 +401,7 @@ export function RoomDetailScreen() {
                     <Text style={styles.badgeText}>player</Text>
                   </View>
                 )}
-              </View>
+              </TouchableOpacity>
             );
           })}
         </Card>
@@ -320,6 +468,18 @@ export function RoomDetailScreen() {
           />
         ) : null}
       </View>
+
+      {room && (
+        <EditRoomModal
+          room={room}
+          visible={editModalVisible}
+          onClose={() => setEditModalVisible(false)}
+          onSaved={(updated) => {
+            setRoom(updated);
+            setEditModalVisible(false);
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -338,8 +498,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  back: { fontSize: fontSize.base, color: colors.accent, fontWeight: '600' },
+  back: { fontSize: fontSize.base, color: colors.accent, fontWeight: '600', width: 60 },
   topTitle: { fontSize: fontSize.base, fontWeight: '800', color: colors.white, flex: 1, textAlign: 'center' },
+  editBtn: { fontSize: fontSize.base, fontWeight: '600', color: colors.accent, width: 40, textAlign: 'right' },
   content: { padding: spacing[5], gap: 16, paddingBottom: 180 },
   hero: {
     backgroundColor: colors.surface,
@@ -409,7 +570,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 6,
   },
-  participantId: { fontSize: fontSize.sm, color: colors.muted, flex: 1 },
+  participantName: { fontSize: fontSize.sm, color: colors.offwhite, flex: 1, fontWeight: '600' },
   actions: { flexDirection: 'row', gap: 8 },
   actionBtn: {
     paddingHorizontal: 12,
@@ -478,4 +639,44 @@ const styles = StyleSheet.create({
   paymentBtns: { gap: 8 },
   alreadyPaidBtn: { alignItems: 'center', paddingVertical: 8 },
   alreadyPaidText: { fontSize: fontSize.xs, color: colors.accent, fontWeight: '600' },
+  modalContainer: { flex: 1, backgroundColor: colors.bg },
+  modalTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing[5],
+    paddingTop: Platform.OS === 'ios' ? 56 : spacing[5],
+    paddingBottom: spacing[4],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: { fontSize: fontSize.base, fontWeight: '800', color: colors.white },
+  modalCancel: { fontSize: fontSize.base, color: colors.muted, fontWeight: '600', width: 60 },
+  modalSave: { fontSize: fontSize.base, color: colors.accent, fontWeight: '700', width: 60, textAlign: 'right' },
+  modalContent: { padding: spacing[5], gap: 4, paddingBottom: 60 },
+  errorBanner: {
+    backgroundColor: `${colors.error}22`,
+    borderWidth: 1,
+    borderColor: colors.error,
+    borderRadius: radius.md,
+    padding: 12,
+    fontSize: fontSize.sm,
+    color: colors.error,
+    marginBottom: spacing[4],
+  },
+  sectionLabel: {
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+    color: colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing[3],
+  },
+  fieldLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.offwhite,
+    letterSpacing: 0.3,
+  },
+  row: { flexDirection: 'row', gap: 12 },
 });
