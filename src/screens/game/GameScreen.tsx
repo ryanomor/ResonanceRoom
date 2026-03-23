@@ -382,7 +382,7 @@ export function GameScreen() {
             <TouchableOpacity
               key={idx}
               onPress={() => handleAnswer(idx)}
-              disabled={myAnswer !== null || !appUser}
+              disabled={!appUser}
               activeOpacity={0.85}
               style={[
                 styles.answerBtn,
