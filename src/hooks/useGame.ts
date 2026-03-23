@@ -3,6 +3,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  updateDoc,
   collection,
   query,
   where,
@@ -55,7 +56,28 @@ export async function createGameSession(roomId: string, questionIds: string[]): 
 }
 
 export async function updateGameSession(id: string, updates: Partial<GameSession>) {
-  await setDoc(doc(db, 'gameSessions', id), { ...updates, updatedAt: new Date().toISOString() }, { merge: true });
+  const now = new Date().toISOString();
+  await setDoc(doc(db, 'gameSessions', id), { ...updates, updatedAt: now }, { merge: true });
+
+  if (updates.gameState) {
+    try {
+      const sessionSnap = await getDoc(doc(db, 'gameSessions', id));
+      if (sessionSnap.exists()) {
+        const roomId = sessionSnap.data().roomId as string;
+        let roomStatus: string | null = null;
+        if (updates.gameState === 'question' || updates.gameState === 'selection' || updates.gameState === 'transition') {
+          roomStatus = 'inProgress';
+        } else if (updates.gameState === 'ended') {
+          roomStatus = 'completed';
+        }
+        if (roomStatus) {
+          await updateDoc(doc(db, 'rooms', roomId), { status: roomStatus, updatedAt: now });
+        }
+      }
+    } catch {
+      // non-blocking
+    }
+  }
 }
 
 export async function getQuestion(questionId: string): Promise<Question | null> {
@@ -83,6 +105,30 @@ export async function getAnswersForQuestion(sessionId: string, questionId: strin
 export async function submitSelection(selection: Omit<UserSelection, 'id'>) {
   const id = uuidv4();
   await setDoc(doc(db, 'userSelections', id), { ...selection, id });
+}
+
+export async function incrementGamesPlayedForRoom(roomId: string) {
+  const now = new Date().toISOString();
+  const participantsSnap = await getDocs(
+    query(
+      collection(db, 'roomParticipants'),
+      where('roomId', '==', roomId),
+      where('status', 'in', ['approved', 'paid', 'inGame'])
+    )
+  );
+  await Promise.all(
+    participantsSnap.docs.map(async (pDoc) => {
+      const userId = pDoc.data().userId as string;
+      const userSnap = await getDoc(doc(db, 'users', userId));
+      if (userSnap.exists()) {
+        const current = (userSnap.data().totalGamesPlayed as number) ?? 0;
+        await updateDoc(doc(db, 'users', userId), {
+          totalGamesPlayed: current + 1,
+          updatedAt: now,
+        });
+      }
+    })
+  );
 }
 
 export function useAnsweredCount(sessionId: string | null, questionId: string | null) {

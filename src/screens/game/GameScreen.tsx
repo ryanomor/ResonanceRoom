@@ -19,6 +19,7 @@ import {
   submitSelection,
   useGameSession,
   useAnsweredCount,
+  incrementGamesPlayedForRoom,
 } from '../../hooks/useGame';
 import { getRoomById } from '../../hooks/useRooms';
 import { useParticipants } from '../../hooks/useParticipants';
@@ -99,11 +100,17 @@ export function GameScreen() {
     if (!currentQuestionId) return;
     setMyAnswer(null);
     setSelectedUserId(null);
+    setAnswers([]);
     getQuestion(currentQuestionId).then((q) => {
       setQuestion(q);
       if (q) setTimeLeft(q.timeLimitSeconds);
     });
   }, [session?.currentQuestionIndex, currentQuestionId]);
+
+  useEffect(() => {
+    if (!session || session.gameState !== 'selection' || !currentQuestionId) return;
+    getAnswersForQuestion(session.id, currentQuestionId).then(setAnswers);
+  }, [session?.gameState, session?.id, currentQuestionId]);
 
   useEffect(() => {
     if (!session?.questionEndTime || session.gameState !== 'question') return;
@@ -181,6 +188,7 @@ export function GameScreen() {
       if (isHost && roomId && hostId && !payoutTriggered) {
         setPayoutTriggered(true);
         triggerHostPayout(roomId, hostId);
+        incrementGamesPlayedForRoom(roomId).catch(() => {});
       }
     }
   }, [session, isHost, roomId, hostId, payoutTriggered]);
@@ -278,6 +286,7 @@ export function GameScreen() {
             .filter((a) => a.userId !== appUser?.id)
             .map((a) => {
               const matched = a.selectedOption === myAnswerIdx;
+              const participant = participants.find((p) => p.userId === a.userId);
               return (
                 <TouchableOpacity
                   key={a.userId}
@@ -290,8 +299,8 @@ export function GameScreen() {
                   ]}
                   activeOpacity={0.8}
                 >
-                  <Avatar name={a.userId} size="lg" />
-                  <Text style={styles.selectionName}>{a.userId.slice(0, 8)}</Text>
+                  <Avatar uri={participant?.avatarUrl} size="lg" />
+                  <Text style={styles.selectionName}>{participant?.username ?? a.userId.slice(0, 8)}</Text>
                   {matched && <Text style={styles.matchTag}>MATCHED!</Text>}
                 </TouchableOpacity>
               );

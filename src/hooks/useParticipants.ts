@@ -6,6 +6,7 @@ import {
   onSnapshot,
   setDoc,
   getDoc,
+  getDocs,
   doc,
   updateDoc,
 } from 'firebase/firestore';
@@ -13,6 +14,20 @@ import { db } from '../lib/firebase';
 import { createClient } from '@supabase/supabase-js';
 import type { RoomParticipant, ParticipantStatus } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+
+async function syncRoomParticipantCount(roomId: string) {
+  const snap = await getDocs(
+    query(
+      collection(db, 'roomParticipants'),
+      where('roomId', '==', roomId),
+      where('status', 'in', ['approved', 'paid', 'inGame'])
+    )
+  );
+  await updateDoc(doc(db, 'rooms', roomId), {
+    currentParticipants: snap.size,
+    updatedAt: new Date().toISOString(),
+  });
+}
 
 async function createNotification(userId: string, type: string, title: string, message: string) {
   const now = new Date().toISOString();
@@ -123,12 +138,18 @@ export async function updateParticipantStatus(id: string, status: ParticipantSta
     ...(status === 'paid' ? { paidAt: new Date().toISOString() } : {}),
   });
 
-  if (status === 'approved' || status === 'rejected') {
-    try {
-      const participantSnap = await getDoc(doc(db, 'roomParticipants', id));
-      if (participantSnap.exists()) {
-        const participant = participantSnap.data();
-        const roomSnap = await getDoc(doc(db, 'rooms', participant.roomId));
+  try {
+    const participantSnap = await getDoc(doc(db, 'roomParticipants', id));
+    if (participantSnap.exists()) {
+      const participant = participantSnap.data();
+      const roomId = participant.roomId as string;
+
+      if (status === 'approved' || status === 'paid' || status === 'rejected') {
+        syncRoomParticipantCount(roomId).catch(() => {});
+      }
+
+      if (status === 'approved' || status === 'rejected') {
+        const roomSnap = await getDoc(doc(db, 'rooms', roomId));
         const roomTitle = roomSnap.exists() ? roomSnap.data().title : 'the room';
         const isApproved = status === 'approved';
         await createNotification(
@@ -140,9 +161,9 @@ export async function updateParticipantStatus(id: string, status: ParticipantSta
             : `Your request to join "${roomTitle}" was not approved.`
         );
       }
-    } catch {
-      // non-blocking
     }
+  } catch {
+    // non-blocking
   }
 }
 
