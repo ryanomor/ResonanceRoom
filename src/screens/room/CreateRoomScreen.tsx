@@ -67,7 +67,8 @@ export function CreateRoomScreen() {
     });
   }, [appUser?.id]);
 
-  const parsedMax = parseInt(maxParticipants) || 10;
+  const rawMax = parseInt(maxParticipants) || 10;
+  const parsedMax = rawMax % 2 === 0 ? rawMax : rawMax + 1;
   const minQuestions = parsedMax;
 
   const scheduledEnd = useMemo(
@@ -202,13 +203,21 @@ export function CreateRoomScreen() {
         )}
 
         <View style={styles.row}>
-          <Input
-            label="Max Players"
-            value={maxParticipants}
-            onChangeText={setMaxParticipants}
-            keyboardType="number-pad"
-            containerStyle={{ flex: 1 }}
-          />
+          <View style={{ flex: 1 }}>
+            <Input
+              label="Max Players (even)"
+              value={maxParticipants}
+              onChangeText={(v) => {
+                const n = parseInt(v);
+                if (!isNaN(n) && n % 2 !== 0) {
+                  setMaxParticipants(String(n + 1));
+                } else {
+                  setMaxParticipants(v);
+                }
+              }}
+              keyboardType="number-pad"
+            />
+          </View>
           <Input
             label="Entry Fee ($)"
             value={entryFee}

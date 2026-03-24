@@ -20,7 +20,7 @@ const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
-const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function daysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -142,6 +142,7 @@ export function DateTimePicker({ value, onChange }: Props) {
               </TouchableOpacity>
             </View>
 
+            <ScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheetScrollContent} keyboardShouldPersistTaps="handled">
             {tab === 'date' ? (
               <View style={styles.calendarWrap}>
                 <View style={styles.monthNav}>
@@ -230,6 +231,7 @@ export function DateTimePicker({ value, onChange }: Props) {
                 </TouchableOpacity>
               </View>
             )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -263,8 +265,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    maxHeight: Platform.OS === 'web' ? 560 : '90%',
+  },
+  sheetScroll: {
+    flexGrow: 0,
+  },
+  sheetScrollContent: {
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-    maxHeight: '90%',
   },
   sheetHeader: {
     flexDirection: 'row',
@@ -352,10 +359,10 @@ const styles = StyleSheet.create({
   },
   cell: {
     width: `${100 / 7}%`,
-    aspectRatio: 1,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 100,
+    borderRadius: 22,
   },
   cellSelected: {
     backgroundColor: colors.accent,

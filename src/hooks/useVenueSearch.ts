@@ -7,6 +7,42 @@ export interface VenueResult {
   lon: string;
 }
 
+interface CityBBox {
+  minLon: number;
+  minLat: number;
+  maxLon: number;
+  maxLat: number;
+}
+
+const cityBBoxCache = new Map<string, CityBBox | null>();
+
+async function getCityBBox(city: string): Promise<CityBBox | null> {
+  const key = city.toLowerCase().trim();
+  if (cityBBoxCache.has(key)) return cityBBoxCache.get(key)!;
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1&featuretype=city`;
+    const res = await fetch(url, {
+      headers: { 'Accept-Language': 'en', 'User-Agent': 'EchoMatch/1.0' },
+    });
+    const data = await res.json();
+    if (data?.length && data[0].boundingbox) {
+      const bb = data[0].boundingbox as [string, string, string, string];
+      const bbox: CityBBox = {
+        minLat: parseFloat(bb[0]),
+        maxLat: parseFloat(bb[1]),
+        minLon: parseFloat(bb[2]),
+        maxLon: parseFloat(bb[3]),
+      };
+      cityBBoxCache.set(key, bbox);
+      return bbox;
+    }
+  } catch {
+    // ignore
+  }
+  cityBBoxCache.set(key, null);
+  return null;
+}
+
 export function useVenueSearch() {
   const [results, setResults] = useState<VenueResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -25,8 +61,19 @@ export function useVenueSearch() {
 
     debounceTimer.current = setTimeout(async () => {
       try {
+        let viewboxParam = '';
+        let boundedParam = '';
+
+        if (cityBias) {
+          const bbox = await getCityBBox(cityBias);
+          if (bbox) {
+            viewboxParam = `&viewbox=${bbox.minLon},${bbox.maxLat},${bbox.maxLon},${bbox.minLat}`;
+            boundedParam = `&bounded=1`;
+          }
+        }
+
         const q = cityBias ? `${query}, ${cityBias}` : query;
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=6`;
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=6${viewboxParam}${boundedParam}`;
         const res = await fetch(url, {
           headers: { 'Accept-Language': 'en', 'User-Agent': 'EchoMatch/1.0' },
         });

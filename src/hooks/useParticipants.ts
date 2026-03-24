@@ -167,6 +167,44 @@ export async function updateParticipantStatus(id: string, status: ParticipantSta
   }
 }
 
+export async function withdrawFromRoom(
+  participantId: string,
+  scheduledStart?: string,
+): Promise<void> {
+  const now = new Date().toISOString();
+
+  const participantSnap = await getDoc(doc(db, 'roomParticipants', participantId));
+  if (!participantSnap.exists()) return;
+  const participant = participantSnap.data() as RoomParticipant;
+  const wasApproved = participant.status === 'approved' || participant.status === 'paid';
+  const roomId = participant.roomId;
+
+  await updateDoc(doc(db, 'roomParticipants', participantId), {
+    status: 'withdrawn',
+    updatedAt: now,
+  });
+
+  try {
+    if (wasApproved) {
+      syncRoomParticipantCount(roomId).catch(() => {});
+    }
+
+    const roomSnap = await getDoc(doc(db, 'rooms', roomId));
+    if (roomSnap.exists() && wasApproved) {
+      const room = roomSnap.data();
+      const displayName = participant.username ?? 'A player';
+      await createNotification(
+        room.hostId,
+        'playerWithdrew',
+        'Player Withdrew',
+        `${displayName} has withdrawn from your room "${room.title}".`
+      );
+    }
+  } catch {
+    // non-blocking
+  }
+}
+
 export async function markParticipantPaid(id: string, stripeSessionId: string) {
   const now = new Date().toISOString();
   await updateDoc(doc(db, 'roomParticipants', id), {

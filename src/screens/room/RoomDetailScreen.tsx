@@ -18,6 +18,7 @@ import {
   joinRoom,
   updateParticipantStatus,
   usePaidParticipantIds,
+  withdrawFromRoom,
 } from '../../hooks/useParticipants';
 import { useAuthStore } from '../../store/authStore';
 import { Avatar } from '../../components/ui/Avatar';
@@ -28,7 +29,7 @@ import { CitySearchInput } from '../../components/ui/CitySearchInput';
 import { VenueSearchInput } from '../../components/ui/VenueSearchInput';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import { colors, fontSize, spacing, radius } from '../../theme';
-import { createPaymentLink, getPaymentStatus } from '../../lib/payments';
+import { createPaymentLink, getPaymentStatus, refundPayment } from '../../lib/payments';
 import type { Room, RoomParticipant } from '../../types';
 
 const MIN_PLAYERS_RATIO = 0.5;
@@ -60,7 +61,8 @@ function EditRoomModal({
     setError('');
     setSaving(true);
     try {
-      const parsedMax = parseInt(maxParticipants) || room.maxParticipants;
+      const rawMax = parseInt(maxParticipants) || room.maxParticipants;
+      const parsedMax = rawMax % 2 === 0 ? rawMax : rawMax + 1;
       const parsedFee = parseFloat(entryFee) || 0;
       const updates: Partial<Room> = {
         title: title.trim(),
@@ -127,9 +129,16 @@ function EditRoomModal({
           <Text style={[styles.sectionLabel, { marginTop: spacing[5] }]}>Game Settings</Text>
           <View style={styles.row}>
             <Input
-              label="Max Players"
+              label="Max Players (even)"
               value={maxParticipants}
-              onChangeText={setMaxParticipants}
+              onChangeText={(v) => {
+                const n = parseInt(v);
+                if (!isNaN(n) && n % 2 !== 0) {
+                  setMaxParticipants(String(n + 1));
+                } else {
+                  setMaxParticipants(v);
+                }
+              }}
               keyboardType="number-pad"
               containerStyle={{ flex: 1 }}
             />
@@ -159,6 +168,7 @@ export function RoomDetailScreen() {
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [payingLink, setPayingLink] = useState(false);
   const [checkingPayment, setCheckingPayment] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -214,6 +224,22 @@ export function RoomDetailScreen() {
 
   async function handleReject(p: RoomParticipant) {
     await updateParticipantStatus(p.id, 'rejected');
+  }
+
+  async function handleWithdraw() {
+    if (!myParticipant || !room) return;
+    setWithdrawing(true);
+    try {
+      if (myPaymentStatus === 'paid') {
+        await refundPayment(myParticipant.id, room.scheduledStart);
+      }
+      await withdrawFromRoom(myParticipant.id, room.scheduledStart);
+      router.back();
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Could not withdraw from room.');
+    } finally {
+      setWithdrawing(false);
+    }
   }
 
   const handlePayToEnter = useCallback(async () => {
@@ -435,6 +461,15 @@ export function RoomDetailScreen() {
         ) : myParticipant.status === 'pending' ? (
           <View style={styles.pendingBanner}>
             <Text style={styles.pendingText}>Waiting for host approval...</Text>
+            <TouchableOpacity
+              onPress={handleWithdraw}
+              disabled={withdrawing}
+              style={styles.withdrawLink}
+            >
+              <Text style={styles.withdrawLinkText}>
+                {withdrawing ? 'Withdrawing...' : 'Cancel request'}
+              </Text>
+            </TouchableOpacity>
           </View>
         ) : myParticipant.status === 'approved' && isPaidRoom && myPaymentStatus !== 'paid' ? (
           <View style={styles.paymentFooter}>
@@ -457,15 +492,27 @@ export function RoomDetailScreen() {
                   {checkingPayment ? 'Checking...' : 'Already paid? Tap to verify'}
                 </Text>
               </TouchableOpacity>
+              <TouchableOpacity onPress={handleWithdraw} disabled={withdrawing} style={styles.withdrawLink}>
+                <Text style={styles.withdrawLinkText}>
+                  {withdrawing ? 'Withdrawing...' : 'Withdraw request'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         ) : myParticipant.status === 'approved' || myPaymentStatus === 'paid' || myParticipant.status === 'paid' ? (
-          <Button
-            label="Enter Game"
-            onPress={() => router.push(`/game/${room.id}`)}
-            size="lg"
-            variant="secondary"
-          />
+          <View style={styles.hostFooter}>
+            <Button
+              label="Enter Game"
+              onPress={() => router.push(`/game/${room.id}`)}
+              size="lg"
+              variant="secondary"
+            />
+            <TouchableOpacity onPress={handleWithdraw} disabled={withdrawing} style={styles.withdrawLink}>
+              <Text style={styles.withdrawLinkText}>
+                {withdrawing ? 'Withdrawing...' : myPaymentStatus === 'paid' ? 'Withdraw & request refund' : 'Withdraw from room'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         ) : null}
       </View>
 
@@ -639,6 +686,8 @@ const styles = StyleSheet.create({
   paymentBtns: { gap: 8 },
   alreadyPaidBtn: { alignItems: 'center', paddingVertical: 8 },
   alreadyPaidText: { fontSize: fontSize.xs, color: colors.accent, fontWeight: '600' },
+  withdrawLink: { alignItems: 'center', paddingVertical: 8 },
+  withdrawLinkText: { fontSize: fontSize.xs, color: colors.error, fontWeight: '600' },
   modalContainer: { flex: 1, backgroundColor: colors.bg },
   modalTopBar: {
     flexDirection: 'row',

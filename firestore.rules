@@ -123,5 +123,12 @@ service cloud.firestore {
       allow get, list: if signedIn();
       allow create, update, delete: if false;
     }
+
+    // NOTIFICATIONS: users can read their own; any signed-in user can create (to notify others)
+    match /notifications/{notificationId} {
+      allow get, list: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
   }
 }
