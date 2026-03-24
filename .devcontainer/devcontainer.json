@@ -1,27 +1,22 @@
 // For format details, see https://aka.ms/devcontainer.json.
-// For Flutter on Codespaces configuration, see https://github.com/Rahullkumr/Flutter-Codespace/tree/main
 {
-  "name": "Flutter",
-  // "image": "ghcr.io/thephaseless/devcontainers/flutter:latest",
-  // "runArgs": [
-  //   "--network=host",
-  //   "--env", "DISPLAY=${localEnv:DISPLAY}",
-  //   "--volume", "${localEnv:HOME}/.Xauthority:/root/.Xauthority:rw",
-  //   "--volume", "/tmp/.X11-unix:/tmp/.X11-unix"
-  // ],
+  "name": "Expo",
   "build": {
     "dockerfile": "Dockerfile"
   },
   // Features to add to the dev container. More info: https://containers.dev/features.
   // "features": {},
   // Use 'forwardPorts' to make a list of ports inside the container available locally.
-  "forwardPorts": [3000],
+  "forwardPorts": [19000, 19001, 19002, 19006, 3000],
   // Configure tool-specific properties.
   "customizations": {
     "vscode": {
       "extensions": [
-        "Dart-Code.dart-code",
-        "Dart-Code.flutter"
+        "ms-vscode.vscode-typescript-next",
+        "msjsdiag.vscode-react-native",
+        "expo.vscode-expo-tools",
+        "ms-vscode.vscode-json",
+        "esbenp.prettier-vscode"
       ]
     }
   }

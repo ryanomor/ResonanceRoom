@@ -1,10 +1,7 @@
-FROM dart
+FROM mcr.microsoft.com/devcontainers/javascript-node:18
 
-RUN apt-get update
-RUN apt-get install -y curl git unzip xz-utils zip libglu1-mesa
+# Install Expo CLI globally
+RUN npm install -g @expo/cli
 
-RUN apt-get clean
-
-RUN git clone https://github.com/flutter/flutter.git -b stable --depth 1 /flutter
-ENV PATH="/flutter/bin:$PATH"
-RUN flutter doctor
+# Clean up
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
