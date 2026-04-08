@@ -4,6 +4,7 @@ import {
   query,
   where,
   getDocs,
+  onSnapshot,
   doc,
   getDoc,
   setDoc,
@@ -17,9 +18,26 @@ import { v4 as uuidv4 } from 'uuid';
 
 export function useRooms(city?: string) {
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const fetchRooms = useCallback(async () => {
+  useEffect(() => {
+    const q = query(
+      collection(db, 'rooms'),
+      where('status', 'in', ['waiting', 'inProgress'])
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      let all: Room[] = snap.docs.map((d) => ({ ...d.data(), id: d.id } as Room));
+      if (city) {
+        const key = metroKey(city);
+        all = all.filter((r) => metroKey(r.city) === key);
+      }
+      setRooms(all);
+      setLoading(false);
+    });
+    return unsub;
+  }, [city]);
+
+  const refetch = useCallback(async () => {
     setLoading(true);
     try {
       const q = query(
@@ -38,11 +56,7 @@ export function useRooms(city?: string) {
     }
   }, [city]);
 
-  useEffect(() => {
-    fetchRooms();
-  }, [fetchRooms]);
-
-  return { rooms, loading, refetch: fetchRooms };
+  return { rooms, loading, refetch };
 }
 
 export async function getRoomById(id: string): Promise<Room | null> {

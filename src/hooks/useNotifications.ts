@@ -15,6 +15,14 @@ import { useAuthStore } from '../store/authStore';
 export function useNotifications() {
   const appUser = useAuthStore((s) => s.appUser);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [lastSeenAt, setLastSeenAt] = useState<string | null>(null);
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!appUser) return;
+    setLastSeenAt(appUser.lastNotificationsSeenAt ?? null);
+    setDismissedIds(appUser.dismissedNotificationIds ?? []);
+  }, [appUser?.id, appUser?.lastNotificationsSeenAt, appUser?.dismissedNotificationIds]);
 
   useEffect(() => {
     if (!appUser) return;
@@ -25,16 +33,16 @@ export function useNotifications() {
     const unsub = onSnapshot(q, (snap) => {
       const all = snap.docs
         .map((d) => ({ ...d.data(), id: d.id } as AppNotification))
-        .filter((n) => !appUser.dismissedNotificationIds.includes(n.id))
+        .filter((n) => !dismissedIds.includes(n.id))
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setNotifications(all);
     });
     return unsub;
-  }, [appUser?.id]);
+  }, [appUser?.id, dismissedIds]);
 
-  const unseen = appUser?.lastNotificationsSeenAt
+  const unseen = lastSeenAt
     ? notifications.filter(
-        (n) => new Date(n.createdAt) > new Date(appUser.lastNotificationsSeenAt!)
+        (n) => new Date(n.createdAt) > new Date(lastSeenAt)
       ).length
     : notifications.length;
 
