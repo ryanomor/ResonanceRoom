@@ -133,7 +133,7 @@ export function GameScreen() {
   }, [timeLeft]);
 
   const handleAnswer = useCallback(async (optionIndex: number) => {
-    if (!session || !appUser || myAnswer !== null || session.gameState !== 'question') return;
+    if (!session || !appUser || session.gameState !== 'question') return;
     setMyAnswer(optionIndex);
     await submitAnswer({
       gameSessionId: session.id,
@@ -142,7 +142,7 @@ export function GameScreen() {
       selectedOption: optionIndex,
       answeredAt: new Date().toISOString(),
     });
-  }, [session, appUser, myAnswer]);
+  }, [session, appUser, session?.gameState]);
 
   const handleHostEndQuestion = useCallback(async () => {
     if (!session) return;
@@ -273,11 +273,12 @@ export function GameScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.selectionHeader}>
-          <Text style={styles.selectionTitle}>Choose your match!</Text>
+          {/* <Text style={styles.selectionTitle}>Choose your match!</Text> */}
+          <Text style={styles.selectionTitle}>Group {ANSWER_SHAPES[myAnswerIdx % 4]}</Text>
           <Text style={styles.selectionSub}>
             {usersWhoMatchedMe.length > 0
-              ? `${usersWhoMatchedMe.length} player${usersWhoMatchedMe.length !== 1 ? 's' : ''} answered like you`
-              : 'Nobody answered the same... try selecting anyone!'}
+              ? `${usersWhoMatchedMe.length} player${usersWhoMatchedMe.length !== 1 ? 's' : ''} answered like you. Chat with others in the group and select who you match with!`
+              : 'Nobody answered the same...'}
           </Text>
         </View>
 

@@ -87,8 +87,22 @@ export async function getQuestion(questionId: string): Promise<Question | null> 
 }
 
 export async function submitAnswer(answer: Omit<UserAnswer, 'id'>) {
-  const id = uuidv4();
-  await setDoc(doc(db, 'userAnswers', id), { ...answer, id });
+  const existingSnap = await getDocs(
+    query(
+      collection(db, 'userAnswers'),
+      where('gameSessionId', '==', answer.gameSessionId),
+      where('userId', '==', answer.userId),
+      where('questionId', '==', answer.questionId)
+    )
+  );
+
+  if (!existingSnap.empty) {
+    const existingDocId = existingSnap.docs[0].id;
+    await updateDoc(doc(db, 'userAnswers', existingDocId), { selectedOption: answer.selectedOption, answeredAt: answer.answeredAt });
+  } else {
+    const id = uuidv4();
+    await setDoc(doc(db, 'userAnswers', id), { ...answer, id });
+  }
 }
 
 export async function getAnswersForQuestion(sessionId: string, questionId: string): Promise<UserAnswer[]> {
