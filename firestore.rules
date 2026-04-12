@@ -22,7 +22,7 @@ service cloud.firestore {
     // Determine if requester is in a match
     function isMatchParticipant(matchId) {
       return signedIn() &&
-        (getMatch(matchId).data.user1Id == request.auth.uid || getMatch(matchId).data.user2Id == request.auth.uid);
+        (getMatch(matchId).data.uid1 == request.auth.uid || getMatch(matchId).data.uid2 == request.auth.uid);
     }
 
     match /{collectionId}/{docId} {
@@ -82,7 +82,7 @@ service cloud.firestore {
     match /matches/{matchId} {
       allow get: if isMatchParticipant(matchId);
       allow list: if false;
-      allow create: if signedIn() && (request.resource.data.user1Id == request.auth.uid || request.resource.data.user2Id == request.auth.uid);
+      allow create: if signedIn() && (request.resource.data.uid1 == request.auth.uid || request.resource.data.uid2 == request.auth.uid);
       allow update: if isMatchParticipant(matchId);
       allow delete: if false;
     }
