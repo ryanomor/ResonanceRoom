@@ -24,7 +24,7 @@ import {
 import { getRoomById } from '../../hooks/useRooms';
 import { useParticipants } from '../../hooks/useParticipants';
 import { useAuthStore } from '../../store/authStore';
-import { createMatch } from '../../hooks/useMatches';
+import { setMatch } from '../../hooks/useMatches';
 import { colors, fontSize, spacing, radius } from '../../theme';
 import { getPaymentStatus, triggerHostPayout } from '../../lib/payments';
 import type { Question, UserAnswer, Room } from '../../types';
@@ -46,7 +46,7 @@ export function GameScreen() {
   const [isHost, setIsHost] = useState(false);
   const [hostId, setHostId] = useState<string | null>(null);
   const [pulse] = useState(new Animated.Value(1));
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [paymentBlocked, setPaymentBlocked] = useState(false);
   const [payoutTriggered, setPayoutTriggered] = useState(false);
@@ -99,7 +99,7 @@ export function GameScreen() {
   useEffect(() => {
     if (!currentQuestionId) return;
     setMyAnswer(null);
-    setSelectedUserId(null);
+    setSelectedUserIds([]);
     setAnswers([]);
     getQuestion(currentQuestionId).then((q) => {
       setQuestion(q);
@@ -152,8 +152,16 @@ export function GameScreen() {
   }, [session]);
 
   const handleSelectUser = useCallback(async (targetUserId: string) => {
-    if (!session || !appUser || selectedUserId) return;
-    setSelectedUserId(targetUserId);
+    if (!session || !appUser) return;
+
+    const alreadySelected = selectedUserIds.includes(targetUserId);
+    if (alreadySelected) {
+      await setMatch(session.id, appUser.id, targetUserId, false);
+      setSelectedUserIds((prev) => prev.filter((id) => id !== targetUserId));
+      return;
+    }
+
+    setSelectedUserIds((prev) => [...prev, targetUserId]);
     await submitSelection({
       gameSessionId: session.id,
       questionId: currentQuestionId!,
@@ -165,9 +173,9 @@ export function GameScreen() {
     const myAnswerIndex = myAnswer ?? 0;
     const theirAnswer = answers.find((a) => a.userId === targetUserId)?.selectedOption;
     if (theirAnswer === myAnswerIndex) {
-      await createMatch(session.id, appUser.id, targetUserId);
+      await setMatch(session.id, appUser.id, targetUserId, true);
     }
-  }, [session, appUser, selectedUserId, myAnswer, answers]);
+  }, [session, appUser, selectedUserIds, myAnswer, answers]);
 
   const handleNextQuestion = useCallback(async () => {
     if (!session) return;
@@ -288,21 +296,21 @@ export function GameScreen() {
             .map((a) => {
               const matched = a.selectedOption === myAnswerIdx;
               const participant = participants.find((p) => p.userId === a.userId);
+              const isSelected = selectedUserIds.includes(a.userId);
               return (
                 <TouchableOpacity
                   key={a.userId}
                   onPress={() => handleSelectUser(a.userId)}
-                  disabled={!!selectedUserId}
                   style={[
                     styles.selectionCard,
                     matched && styles.selectionCardMatch,
-                    selectedUserId === a.userId && styles.selectionCardSelected,
+                    isSelected && styles.selectionCardSelected,
                   ]}
                   activeOpacity={0.8}
                 >
                   <Avatar uri={participant?.avatarUrl} size="lg" />
                   <Text style={styles.selectionName}>{participant?.username ?? a.userId.slice(0, 8)}</Text>
-                  {matched && <Text style={styles.matchTag}>MATCHED!</Text>}
+                  {matched && isSelected && <Text style={styles.matchTag}>LIKED!</Text>}
                 </TouchableOpacity>
               );
             })}

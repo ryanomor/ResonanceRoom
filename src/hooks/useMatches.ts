@@ -7,6 +7,7 @@ import {
   doc,
   updateDoc,
   setDoc,
+  deleteDoc,
   getDocs,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -42,13 +43,51 @@ export function useMatches(userId: string | null) {
   return { matches, loading };
 }
 
-export async function createMatch(
+async function findMatchDoc(
   gameSessionId: string,
   uid1: string,
   uid2: string
-): Promise<Match> {
+): Promise<Match | null> {
+  const snap = await getDocs(query(collection(db, 'matches'), where('gameSessionId', '==', gameSessionId)));
+  const existingDoc = snap.docs.find((d) => {
+    const data = d.data();
+    return (
+      (data.uid1 === uid1 && data.uid2 === uid2) ||
+      (data.uid1 === uid2 && data.uid2 === uid1)
+    );
+  });
+
+  return existingDoc ? ({ ...existingDoc.data(), id: existingDoc.id } as Match) : null;
+}
+
+export async function setMatch(
+  gameSessionId: string,
+  uid1: string,
+  uid2: string,
+  matched: boolean
+): Promise<Match | null> {
+  const existingMatch = await findMatchDoc(gameSessionId, uid1, uid2);
+
+  if (!matched) {
+    if (!existingMatch) return null;
+    await deleteDoc(doc(db, 'matches', existingMatch.id));
+    return null;
+  }
+
   const now = new Date();
   const expires = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+  if (existingMatch) {
+    if (existingMatch.status !== 'active') {
+      await updateDoc(doc(db, 'matches', existingMatch.id), {
+        status: 'active',
+        matchedAt: now.toISOString(),
+        expiresAt: expires.toISOString(),
+      });
+    }
+    return existingMatch;
+  }
+
   const match: Match = {
     id: uuidv4(),
     gameSessionId,
@@ -58,6 +97,7 @@ export async function createMatch(
     expiresAt: expires.toISOString(),
     status: 'active',
   };
+
   await setDoc(doc(db, 'matches', match.id), match);
   return match;
 }
