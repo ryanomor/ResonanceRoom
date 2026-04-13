@@ -156,7 +156,7 @@ export function GameScreen() {
 
     const alreadySelected = selectedUserIds.includes(targetUserId);
     if (alreadySelected) {
-      await setMatch(session.id, appUser.id, targetUserId, false);
+      await setMatch(session.id, appUser.id, targetUserId, currentQuestionId!, false);
       setSelectedUserIds((prev) => prev.filter((id) => id !== targetUserId));
       return;
     }
@@ -173,7 +173,7 @@ export function GameScreen() {
     const myAnswerIndex = myAnswer ?? 0;
     const theirAnswer = answers.find((a) => a.userId === targetUserId)?.selectedOption;
     if (theirAnswer === myAnswerIndex) {
-      await setMatch(session.id, appUser.id, targetUserId, true);
+      await setMatch(session.id, appUser.id, targetUserId, currentQuestionId!, true);
     }
   }, [session, appUser, selectedUserIds, myAnswer, answers]);
 

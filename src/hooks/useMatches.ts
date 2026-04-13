@@ -60,10 +60,32 @@ async function findMatchDoc(
   return existingDoc ? ({ ...existingDoc.data(), id: existingDoc.id } as Match) : null;
 }
 
+async function checkMutualSelection(
+  gameSessionId: string,
+  questionId: string,
+  uid1: string,
+  uid2: string
+): Promise<boolean> {
+  const snap = await getDocs(
+    query(
+      collection(db, 'userSelections'),
+      where('gameSessionId', '==', gameSessionId),
+      where('questionId', '==', questionId)
+    )
+  );
+
+  const selections = snap.docs.map((d) => d.data());
+  const uid1SelectedUid2 = selections.some((s) => s.selectorUserId === uid1 && s.selectedUserId === uid2);
+  const uid2SelectedUid1 = selections.some((s) => s.selectorUserId === uid2 && s.selectedUserId === uid1);
+
+  return uid1SelectedUid2 && uid2SelectedUid1;
+}
+
 export async function setMatch(
   gameSessionId: string,
   uid1: string,
   uid2: string,
+  questionId: string,
   matched: boolean
 ): Promise<Match | null> {
   const existingMatch = await findMatchDoc(gameSessionId, uid1, uid2);
@@ -73,6 +95,9 @@ export async function setMatch(
     await deleteDoc(doc(db, 'matches', existingMatch.id));
     return null;
   }
+
+  const isMutual = await checkMutualSelection(gameSessionId, questionId, uid1, uid2);
+  if (!isMutual) return null;
 
   const now = new Date();
   const expires = new Date(now.getTime() + 24 * 60 * 60 * 1000);
