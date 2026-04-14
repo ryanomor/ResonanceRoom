@@ -17,6 +17,7 @@ import {
   submitAnswer,
   getAnswersForQuestion,
   submitSelection,
+  deleteSelection,
   useGameSession,
   useAnsweredCount,
   incrementGamesPlayedForRoom,
@@ -158,6 +159,7 @@ export function GameScreen() {
 
     const alreadySelected = selectedUserIds.includes(targetUserId);
     if (alreadySelected) {
+      await deleteSelection(session.id, currentQuestionId!, appUser.id, targetUserId);
       await setMatch(session.id, appUser.id, targetUserId, currentQuestionId!, false);
       setSelectedUserIds((prev) => prev.filter((id) => id !== targetUserId));
       return;

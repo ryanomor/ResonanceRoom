@@ -122,6 +122,24 @@ export async function submitSelection(selection: Omit<UserSelection, 'id'>) {
   await setDoc(doc(db, 'userSelections', id), { ...selection, id });
 }
 
+export async function deleteSelection(
+  gameSessionId: string,
+  questionId: string,
+  selectorUserId: string,
+  selectedUserId: string
+) {
+  const snap = await getDocs(
+    query(
+      collection(db, 'userSelections'),
+      where('gameSessionId', '==', gameSessionId),
+      where('questionId', '==', questionId),
+      where('selectorUserId', '==', selectorUserId),
+      where('selectedUserId', '==', selectedUserId)
+    )
+  );
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+}
+
 export async function incrementGamesPlayedForRoom(roomId: string) {
   const now = new Date().toISOString();
   const participantsSnap = await getDocs(
