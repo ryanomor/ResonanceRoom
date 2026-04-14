@@ -7,6 +7,9 @@ service cloud.firestore {
     // Helpers to load referenced docs
     function getRoom(roomId) { return get(/databases/$(database)/documents/rooms/$(roomId)); }
     function getMatch(matchId) { return get(/databases/$(database)/documents/matches/$(matchId)); }
+    function getRoomByGameSession(gameSessionId) {
+      return get(/databases/$(database)/documents/gameSessions/$(gameSessionId)).data.roomId;
+    }
 
     // Determine if requester is host of a room
     function isRoomHost(roomId) {
@@ -84,7 +87,7 @@ service cloud.firestore {
       allow list: if false;
       allow create: if signedIn() && (request.resource.data.uid1 == request.auth.uid || request.resource.data.uid2 == request.auth.uid);
       allow update: if isMatchParticipant(matchId);
-      allow delete: if false;
+      allow delete: if isMatchParticipant(matchId);
     }
 
     // CHAT MESSAGES: top-level collection scoped by matchId
@@ -108,14 +111,15 @@ service cloud.firestore {
     match /userAnswers/{answerId} {
       allow get, list: if signedIn();
       allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if false;
+      allow update: if signedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isRoomHost(getRoomByGameSession(resource.data.gameSessionId));
     }
 
     // USER SELECTIONS: created by participants (selectorUserId)
     match /userSelections/{selectionId} {
       allow get, list: if signedIn();
       allow create: if signedIn() && request.resource.data.selectorUserId == request.auth.uid;
-      allow update, delete: if false;
+      allow update, delete: if signedIn() && resource.data.selectorUserId == request.auth.uid;
     }
 
     // QUESTIONS: readable to all signed-in; write restricted
