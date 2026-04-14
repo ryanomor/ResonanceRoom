@@ -9,6 +9,7 @@ import {
   where,
   getDocs,
   onSnapshot,
+  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { GameSession, Question, UserAnswer, UserSelection } from '../types';
@@ -163,4 +164,22 @@ export function useAnsweredCount(sessionId: string | null, questionId: string | 
   }, [sessionId, questionId]);
 
   return count;
+}
+
+export async function deleteUserSelectionsForQuestion(sessionId: string, questionId: string) {
+  const snap = await getDocs(
+    query(
+      collection(db, 'userSelections'),
+      where('gameSessionId', '==', sessionId),
+      where('questionId', '==', questionId)
+    )
+  );
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+}
+
+export async function deleteUserAnswersForGameSession(sessionId: string) {
+  const snap = await getDocs(
+    query(collection(db, 'userAnswers'), where('gameSessionId', '==', sessionId))
+  );
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 }

@@ -20,6 +20,8 @@ import {
   useGameSession,
   useAnsweredCount,
   incrementGamesPlayedForRoom,
+  deleteUserSelectionsForQuestion,
+  deleteUserAnswersForGameSession,
 } from '../../hooks/useGame';
 import { getRoomById } from '../../hooks/useRooms';
 import { useParticipants } from '../../hooks/useParticipants';
@@ -179,6 +181,10 @@ export function GameScreen() {
 
   const handleNextQuestion = useCallback(async () => {
     if (!session) return;
+    const currentQuestionId = session.questionIds[session.currentQuestionIndex];
+    if (currentQuestionId) {
+      await deleteUserSelectionsForQuestion(session.id, currentQuestionId);
+    }
     if (session.currentQuestionIndex < session.questionIds.length - 1) {
       const nextIndex = session.currentQuestionIndex + 1;
       const nextQuestionId = session.questionIds[nextIndex] ?? null;
@@ -192,6 +198,7 @@ export function GameScreen() {
         questionEndTime: new Date(now.getTime() + timeLimitMs).toISOString(),
       });
     } else {
+      await deleteUserAnswersForGameSession(session.id);
       await updateGameSession(session.id, { gameState: 'ended' });
       if (isHost && roomId && hostId && !payoutTriggered) {
         setPayoutTriggered(true);
