@@ -31,6 +31,7 @@ export function QuestionPicker({ selectedIds, onChange }: Props) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(false);
   const [local, setLocal] = useState<string[]>(selectedIds);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   async function fetchQuestions() {
     setLoading(true);
@@ -61,6 +62,9 @@ export function QuestionPicker({ selectedIds, onChange }: Props) {
   }
 
   const categories = Array.from(new Set(questions.map(q => q.category))).sort();
+  const filteredQuestions = selectedCategories.length > 0
+    ? questions.filter(q => selectedCategories.includes(q.category))
+    : questions;
 
   return (
     <>
@@ -89,6 +93,39 @@ export function QuestionPicker({ selectedIds, onChange }: Props) {
               </TouchableOpacity>
             </View>
 
+            {categories.length > 1 && (
+              <View style={styles.filterContainer}>
+                {categories.map(category => {
+                  const isSelected = selectedCategories.includes(category);
+                  return (
+                    <TouchableOpacity
+                      key={category}
+                      style={[styles.filterButton, isSelected && styles.filterButtonActive]}
+                      onPress={() => {
+                        setSelectedCategories(prev =>
+                          isSelected
+                            ? prev.filter(c => c !== category)
+                            : [...prev, category]
+                        );
+                      }}
+                    >
+                      <Text style={[styles.filterText, isSelected && styles.filterTextActive]}>
+                        {category}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+                {selectedCategories.length > 0 && (
+                  <TouchableOpacity
+                    style={[styles.filterButton, styles.clearButton]}
+                    onPress={() => setSelectedCategories([])}
+                  >
+                    <Text style={styles.clearText}>Clear</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
             {loading ? (
               <View style={styles.loader}>
                 <ActivityIndicator color={colors.accent} size="large" />
@@ -100,7 +137,7 @@ export function QuestionPicker({ selectedIds, onChange }: Props) {
               </View>
             ) : (
               <FlatList
-                data={questions}
+                data={filteredQuestions}
                 keyExtractor={item => item.id}
                 contentContainerStyle={styles.list}
                 keyboardShouldPersistTaps="handled"
@@ -206,6 +243,40 @@ const styles = StyleSheet.create({
   done: {
     fontSize: fontSize.base,
     color: colors.accent,
+    fontWeight: '700',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+    gap: 8,
+  },
+  filterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  filterButtonActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  filterText: {
+    fontSize: fontSize.sm,
+    color: colors.muted,
+    fontWeight: '600',
+  },
+  filterTextActive: {
+    color: colors.white,
+  },
+  clearButton: {
+    backgroundColor: colors.error,
+    borderColor: colors.error,
+  },
+  clearText: {
+    color: colors.white,
     fontWeight: '700',
   },
   loader: {
