@@ -8,6 +8,7 @@ import {
   FlatList,
   ActivityIndicator,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -95,34 +96,42 @@ export function QuestionPicker({ selectedIds, onChange }: Props) {
 
             {categories.length > 1 && (
               <View style={styles.filterContainer}>
-                {categories.map(category => {
-                  const isSelected = selectedCategories.includes(category);
-                  return (
-                    <TouchableOpacity
-                      key={category}
-                      style={[styles.filterButton, isSelected && styles.filterButtonActive]}
-                      onPress={() => {
-                        setSelectedCategories(prev =>
-                          isSelected
-                            ? prev.filter(c => c !== category)
-                            : [...prev, category]
-                        );
-                      }}
-                    >
-                      <Text style={[styles.filterText, isSelected && styles.filterTextActive]}>
-                        {category}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
                 {selectedCategories.length > 0 && (
-                  <TouchableOpacity
-                    style={[styles.filterButton, styles.clearButton]}
-                    onPress={() => setSelectedCategories([])}
-                  >
-                    <Text style={styles.clearText}>Clear</Text>
-                  </TouchableOpacity>
+                  <View style={styles.filterHeader}>
+                    <TouchableOpacity
+                      style={[styles.filterButton, styles.clearButton]}
+                      onPress={() => setSelectedCategories([])}
+                    >
+                      <Text style={styles.clearText}>Clear</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.filterScrollContent}
+                >
+                  {categories.map(category => {
+                    const isSelected = selectedCategories.includes(category);
+                    return (
+                      <TouchableOpacity
+                        key={category}
+                        style={[styles.filterButton, isSelected && styles.filterButtonActive]}
+                        onPress={() => {
+                          setSelectedCategories(prev =>
+                            isSelected
+                              ? prev.filter(c => c !== category)
+                              : [...prev, category]
+                          );
+                        }}
+                      >
+                        <Text style={[styles.filterText, isSelected && styles.filterTextActive]}>
+                          {category}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
               </View>
             )}
 
@@ -246,9 +255,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing[4],
+    flexDirection: 'column',
     paddingVertical: spacing[3],
+  },
+  filterHeader: {
+    alignItems: 'flex-end',
+    paddingHorizontal: spacing[4],
+    marginBottom: spacing[2],
+  },
+  filterScrollContent: {
+    paddingHorizontal: spacing[4],
     gap: 8,
   },
   filterButton: {
