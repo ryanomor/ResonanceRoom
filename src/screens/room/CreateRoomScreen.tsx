@@ -14,7 +14,6 @@ import { createRoom } from '../../hooks/useRooms';
 import { joinRoomAsHost } from '../../hooks/useParticipants';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { CitySearchInput } from '../../components/ui/CitySearchInput';
 import { VenueSearchInput } from '../../components/ui/VenueSearchInput';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import { QuestionPicker } from '../../components/ui/QuestionPicker';
@@ -46,7 +45,7 @@ export function CreateRoomScreen() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [city, setCity] = useState(appUser?.city ?? '');
+  const city = appUser?.city ?? '';
   const [venueAddress, setVenueAddress] = useState('');
   const [maxParticipants, setMaxParticipants] = useState('10');
   const [entryFee, setEntryFee] = useState('0');
@@ -177,12 +176,16 @@ export function CreateRoomScreen() {
 
         <Text style={[styles.sectionLabel, { marginTop: spacing[5] }]}>Location</Text>
 
-        <CitySearchInput
+        {/* <CitySearchInput
           label="City"
           value={city}
           onSelect={setCity}
           containerStyle={{ zIndex: 200 }}
-        />
+        /> */}
+        <View style={styles.cityDisplay}>
+          <Text style={styles.fieldLabel}>City</Text>
+          <Text style={styles.cityText}>{city}</Text>
+        </View>
         <VenueSearchInput
           label="Venue Address"
           value={venueAddress}
@@ -317,5 +320,13 @@ const styles = StyleSheet.create({
     color: colors.yellow,
     fontWeight: '600',
     lineHeight: 20,
+  },
+  cityDisplay: {
+    marginBottom: spacing[3],
+  },
+  cityText: {
+    fontSize: fontSize.base,
+    color: colors.white,
+    marginTop: 6,
   },
 });
