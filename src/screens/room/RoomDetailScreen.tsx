@@ -447,7 +447,7 @@ export function RoomDetailScreen() {
               label="Start Game"
               onPress={() => router.push(`/game/${room.id}`)}
               size="lg"
-              variant="primary"
+              variant="tertiary"
               disabled={!canStartGame}
             />
           </View>
@@ -457,6 +457,7 @@ export function RoomDetailScreen() {
             onPress={handleJoin}
             loading={joining}
             size="lg"
+            variant="tertiary"
           />
         ) : myParticipant.status === 'pending' ? (
           <View style={styles.pendingBanner}>
@@ -485,7 +486,7 @@ export function RoomDetailScreen() {
                 onPress={handlePayToEnter}
                 loading={payingLink}
                 size="lg"
-                variant="primary"
+                variant="tertiary"
               />
               <TouchableOpacity onPress={handleCheckPayment} disabled={checkingPayment} style={styles.alreadyPaidBtn}>
                 <Text style={styles.alreadyPaidText}>
@@ -505,7 +506,7 @@ export function RoomDetailScreen() {
               label="Enter Game"
               onPress={() => router.push(`/game/${room.id}`)}
               size="lg"
-              variant="secondary"
+              variant="tertiary"
             />
             <TouchableOpacity onPress={handleWithdraw} disabled={withdrawing} style={styles.withdrawLink}>
               <Text style={styles.withdrawLinkText}>

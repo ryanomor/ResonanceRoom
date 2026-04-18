@@ -85,8 +85,10 @@ export function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Text style={styles.logo}>echo</Text>
+          <Text style={styles.logo}>venn</Text>
           <Text style={styles.logoAccent}>match</Text>
+          {/* <Text style={styles.logo}>echo</Text>
+          <Text style={styles.logoAccent}>match</Text> */}
           <Text style={styles.tagline}>Connect, compete, and find your match.</Text>
         </View>
 
@@ -193,13 +195,13 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 42,
     fontWeight: '900',
-    color: colors.white,
+    color: colors.primary,
     letterSpacing: -1,
   },
   logoAccent: {
     fontSize: 42,
     fontWeight: '900',
-    color: colors.primary,
+    color: colors.accent,
     letterSpacing: -1,
   },
   tagline: {

@@ -98,7 +98,7 @@ export function StripeConnectSection({ userId }: Props) {
       <View style={styles.actions}>
         {!isActive && (
           <TouchableOpacity
-            style={[styles.btn, styles.btnPrimary, actionLoading && styles.btnDisabled]}
+            style={[styles.btn, styles.btnTertiary, actionLoading && styles.btnDisabled]}
             onPress={handleConnect}
             disabled={actionLoading}
           >
@@ -191,8 +191,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnPrimary: {
-    backgroundColor: colors.accent,
+  // btnPrimary: {
+  //   backgroundColor: colors.accent,
+  // },
+  btnTertiary: {
+    backgroundColor: colors.amethyst,
   },
   btnGhost: {
     borderWidth: 1,

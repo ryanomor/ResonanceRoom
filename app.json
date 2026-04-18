@@ -1,32 +1,29 @@
 {
   "expo": {
-    "name": "EchoMatch",
-    "slug": "echomatch",
-    "version": "1.0.0",
+    "name": "Venn",
+    "slug": "venn-app",
+    "version": "1.90.0",
     "orientation": "portrait",
-    "icon": "./assets/icons/dreamflow_icon.jpg",
-    "scheme": "echomatch",
-    "userInterfaceStyle": "dark",
+    "icon": "./assets/icons/venn_icon.png",
+    "scheme": "venn-app",
+    "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/icons/dreamflow_icon.jpg",
-      "resizeMode": "contain",
-      "backgroundColor": "#13111C"
+      "backgroundImage": "./assets/icons/venn_icon.png",
+      "resizeMode": "contain"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.echomatch.app"
+      "bundleIdentifier": "com.venn.app"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icons/dreamflow_icon.jpg",
-        "backgroundColor": "#13111C"
+        "backgroundImage": "./assets/icons/venn_icon.png"
       },
-      "package": "com.echomatch.app"
+      "package": "com.venn.app"
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/icons/dreamflow_icon.jpg"
+      "output": "static"
     },
     "plugins": [
       "expo-router",

@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { colors, radius, fontSize, fontWeight } from '../../theme';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'tertiary' | 'ghost' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
 
 interface Props {
@@ -36,6 +36,7 @@ export function Button({
   const bg: Record<Variant, string> = {
     primary: colors.primary,
     secondary: colors.accent,
+    tertiary: colors.amethyst,
     ghost: 'transparent',
     danger: colors.error,
   };
