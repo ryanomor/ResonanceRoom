@@ -441,12 +441,12 @@ export function MatchUserProfileScreen() {
           </Card>
         )}
 
-        <View style={styles.matchBadge}>
+        {/* <View style={styles.matchBadge}>
           <Text style={styles.matchBadgeIcon}>🎯</Text>
           <Text style={styles.matchBadgeText}>
             You matched with {profile.username} in a game!
           </Text>
-        </View>
+        </View> */}
       </ScrollView>
     </View>
   );
@@ -618,23 +618,23 @@ const styles = StyleSheet.create({
   payoutStatusPaidText: { color: colors.green },
   payoutStatusFailedText: { color: colors.error },
   actions: { paddingTop: spacing[4] },
-  matchBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: `${colors.accent}18`,
-    borderRadius: radius.lg,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: `${colors.accent}44`,
-    marginTop: 4,
-  },
-  matchBadgeIcon: { fontSize: 20 },
-  matchBadgeText: {
-    flex: 1,
-    fontSize: fontSize.sm,
-    color: colors.accent,
-    fontWeight: '600',
-    lineHeight: 20,
-  },
+  // matchBadge: {
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   gap: 10,
+  //   backgroundColor: `${colors.accent}18`,
+  //   borderRadius: radius.lg,
+  //   padding: 14,
+  //   borderWidth: 1,
+  //   borderColor: `${colors.accent}44`,
+  //   marginTop: 4,
+  // },
+  // matchBadgeIcon: { fontSize: 20 },
+  // matchBadgeText: {
+  //   flex: 1,
+  //   fontSize: fontSize.sm,
+  //   color: colors.accent,
+  //   fontWeight: '600',
+  //   lineHeight: 20,
+  // },
 });
