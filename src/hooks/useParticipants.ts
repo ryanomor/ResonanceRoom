@@ -20,7 +20,8 @@ async function syncRoomParticipantCount(roomId: string) {
     query(
       collection(db, 'roomParticipants'),
       where('roomId', '==', roomId),
-      where('status', 'in', ['approved', 'paid', 'inGame'])
+      where('status', 'in', ['approved', 'paid', 'inGame']),
+      where('role', '==', 'player') // exclude host from participant count
     )
   );
   await updateDoc(doc(db, 'rooms', roomId), {
@@ -42,6 +43,8 @@ async function createNotification(userId: string, type: string, title: string, m
     updatedAt: now,
   });
 }
+
+export { createNotification };
 
 const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_URL!,

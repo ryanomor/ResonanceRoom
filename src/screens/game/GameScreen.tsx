@@ -28,6 +28,9 @@ import { getRoomById } from '../../hooks/useRooms';
 import { useParticipants } from '../../hooks/useParticipants';
 import { useAuthStore } from '../../store/authStore';
 import { setMatch } from '../../hooks/useMatches';
+import { getMatchesBySessionId } from '../../hooks/useMatches';
+import { getUserById } from '../../hooks/useAuth';
+import { createNotification } from '../../hooks/useParticipants';
 import { colors, fontSize, spacing, radius } from '../../theme';
 import { getPaymentStatus, triggerHostPayout } from '../../lib/payments';
 import type { Question, UserAnswer, Room } from '../../types';
@@ -202,6 +205,38 @@ export function GameScreen() {
     } else {
       await deleteUserAnswersForGameSession(session.id);
       await updateGameSession(session.id, { gameState: 'ended' });
+      
+      // Notify users about their matches
+      try {
+        const matches = await getMatchesBySessionId(session.id);
+        const notifiedUsers = new Set<string>();
+        
+        for (const match of matches) {
+          if (!notifiedUsers.has(match.uid1)) {
+            const otherUser = await getUserById(match.uid2);
+            await createNotification(
+              match.uid1,
+              'newMatch',
+              'New Match!',
+              `You matched with ${otherUser?.username || 'someone'} in a game!`
+            );
+            notifiedUsers.add(match.uid1);
+          }
+          if (!notifiedUsers.has(match.uid2)) {
+            const otherUser = await getUserById(match.uid1);
+            await createNotification(
+              match.uid2,
+              'newMatch',
+              'New Match!',
+              `You matched with ${otherUser?.username || 'someone'} in a game!`
+            );
+            notifiedUsers.add(match.uid2);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to send match notifications:', error);
+      }
+      
       if (isHost && roomId && hostId && !payoutTriggered) {
         setPayoutTriggered(true);
         triggerHostPayout(roomId, hostId);

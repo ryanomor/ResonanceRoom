@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
-import { useMatches, getOtherUserId, isMatchExpired } from '../../hooks/useMatches';
+import { useMatches, isMatchExpired } from '../../hooks/useMatches';
+import { getUserById } from '../../hooks/useAuth';
 import { Avatar } from '../../components/ui/Avatar';
 import { colors, fontSize, spacing, radius } from '../../theme';
 import type { Match } from '../../types';
@@ -39,29 +40,47 @@ export function MatchesScreen() {
   const router = useRouter();
   const appUser = useAuthStore((s) => s.appUser);
   const { matches, loading } = useMatches(appUser?.id ?? null);
+  const [userCache, setUserCache] = useState<Record<string, any>>({});
 
   const active = matches.filter((m) => m.status !== 'expired' && !isMatchExpired(m));
   const expired = matches.filter((m) => m.status === 'expired' || isMatchExpired(m));
 
-  function renderMatch({ item }: { item: Match }) {
-    const otherId = getOtherUserId(item, appUser?.id ?? '');
-    const expired2 = isMatchExpired(item) || item.status === 'expired';
+  useEffect(() => {
+    async function loadUsers() {
+      const cache: Record<string, any> = {};
+      for (const match of matches) {
+        const otherId = appUser?.id === match.uid1 ? match.uid2 : match.uid1;
+        if (!cache[otherId]) {
+          cache[otherId] = await getUserById(otherId);
+        }
+      }
+      setUserCache(cache);
+    }
+    if (matches.length > 0) {
+      loadUsers();
+    }
+  }, [matches, appUser?.id]);
+
+  function renderMatch({ item: match }: { item: Match }) {
+    const otherId = appUser?.id === match.uid1 ? match.uid2 : match.uid1;
+    const otherUser = userCache[otherId];
+    const expired2 = isMatchExpired(match) || match.status === 'expired';
 
     return (
       <TouchableOpacity
-        onPress={() => router.push(`/chat/${item.id}`)}
+        onPress={() => router.push(`/chat/${match.id}`)}
         style={[styles.matchCard, expired2 && styles.matchCardExpired]}
         activeOpacity={0.8}
       >
-        <Avatar name={otherId} size="md" />
+        <Avatar uri={otherUser?.avatarUrl} name={otherUser?.username || otherId} size="md" />
         <View style={styles.matchInfo}>
-          <Text style={styles.matchName}>{otherId.slice(0, 12)}...</Text>
+          <Text style={styles.matchName}>{otherUser?.username || otherId}</Text>
           <Text style={styles.matchSub}>
-            Matched in game · {new Date(item.matchedAt).toLocaleDateString()}
+            Matched in game · {new Date(match.matchedAt).toLocaleDateString()}
           </Text>
-          {!expired2 && <CountdownTimer expiresAt={item.expiresAt} />}
+          {!expired2 && <CountdownTimer expiresAt={match.expiresAt} />}
         </View>
-        {item.status === 'chatted' && (
+        {match.status === 'chatted' && (
           <View style={styles.chattedDot} />
         )}
         {!expired2 && (
@@ -119,7 +138,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: fontSize.xl, fontWeight: '900', color: colors.white },
   countBadge: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.amethyst,
     borderRadius: radius.full,
     minWidth: 24,
     height: 24,

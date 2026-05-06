@@ -12,7 +12,7 @@ export type ParticipantRole = 'player' | 'host';
 
 export type QuestionDifficulty = 'easy' | 'medium' | 'hard';
 
-export type AppNotificationType = 'gameStartingSoon' | 'joinRequestUpdate' | 'newCityGame';
+export type AppNotificationType = 'gameStartingSoon' | 'joinRequestUpdate' | 'newCityGame' | 'newMatch';
 
 export interface User {
   id: string;

@@ -40,6 +40,12 @@ export async function getSessionByRoomId(roomId: string): Promise<GameSession | 
   return { ...d.data(), id: d.id } as GameSession;
 }
 
+export async function getGameSessionById(sessionId: string): Promise<GameSession | null> {
+  const snap = await getDoc(doc(db, 'gameSessions', sessionId));
+  if (!snap.exists()) return null;
+  return { ...snap.data(), id: snap.id } as GameSession;
+}
+
 export async function createGameSession(roomId: string, questionIds: string[]): Promise<GameSession> {
   const now = new Date().toISOString();
   const session: GameSession = {

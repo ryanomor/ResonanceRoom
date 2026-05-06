@@ -233,3 +233,15 @@ export async function deleteAccount() {
   await deleteDoc(doc(db, 'users', uid));
   if (auth.currentUser) await deleteUser(auth.currentUser);
 }
+
+export async function getUserById(userId: string): Promise<User | null> {
+  try {
+    const snap = await getDoc(doc(db, 'users', userId));
+    if (snap.exists()) {
+      const user = snap.data() as User;
+      return user;
+    }
+  } catch {
+  }
+  return null;
+}

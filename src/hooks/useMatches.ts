@@ -13,6 +13,8 @@ import {
 import { db } from '../lib/firebase';
 import type { Match } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { getUserById } from './useAuth';
+import { getGameSessionById } from './useGame';
 
 export function useMatches(userId: string | null) {
   const [matches, setMatches] = useState<Match[]>([]);
@@ -20,24 +22,48 @@ export function useMatches(userId: string | null) {
 
   useEffect(() => {
     if (!userId) return;
+    let active = true;
     const q1 = query(collection(db, 'matches'), where('uid1', '==', userId));
     const q2 = query(collection(db, 'matches'), where('uid2', '==', userId));
 
     const map = new Map<string, Match>();
 
+    async function refreshMatches() {
+      const allMatches = Array.from(map.values());
+      const sessionIds = Array.from(new Set(allMatches.map((m) => m.gameSessionId)));
+      const sessionStates = new Map<string, string>();
+
+      await Promise.all(
+        sessionIds.map(async (sessionId) => {
+          const session = await getGameSessionById(sessionId);
+          sessionStates.set(sessionId, session?.gameState ?? '');
+        })
+      );
+
+      const visibleMatches = allMatches.filter(
+        (match) => sessionStates.get(match.gameSessionId) === 'ended'
+      );
+
+      if (!active) return;
+      setMatches(visibleMatches);
+      setLoading(false);
+    }
+
     const unsub1 = onSnapshot(q1, (snap) => {
       snap.docs.forEach((d) => map.set(d.id, { ...d.data(), id: d.id } as Match));
-      setMatches(Array.from(map.values()));
-      setLoading(false);
+      void refreshMatches();
     });
 
     const unsub2 = onSnapshot(q2, (snap) => {
       snap.docs.forEach((d) => map.set(d.id, { ...d.data(), id: d.id } as Match));
-      setMatches(Array.from(map.values()));
-      setLoading(false);
+      void refreshMatches();
     });
 
-    return () => { unsub1(); unsub2(); };
+    return () => {
+      active = false;
+      unsub1();
+      unsub2();
+    };
   }, [userId]);
 
   return { matches, loading };
@@ -127,10 +153,6 @@ export async function setMatch(
   return match;
 }
 
-export function getOtherUserId(match: Match, currentUserId: string) {
-  return currentUserId === match.uid1 ? match.uid2 : match.uid1;
-}
-
 export function isMatchExpired(match: Match) {
   return new Date() > new Date(match.expiresAt) && match.status === 'active';
 }
@@ -140,4 +162,9 @@ export async function markMatchChatted(matchId: string) {
     status: 'chatted',
     firstChatAt: new Date().toISOString(),
   });
+}
+
+export async function getMatchesBySessionId(sessionId: string): Promise<Match[]> {
+  const snap = await getDocs(query(collection(db, 'matches'), where('gameSessionId', '==', sessionId)));
+  return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Match));
 }

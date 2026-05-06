@@ -16,6 +16,7 @@ const TYPE_ICONS: Record<string, string> = {
   joinRequest: '🙋',
   joinRequestUpdate: '✅',
   newCityGame: '🏙️',
+  newMatch: '💕',
 };
 
 function NotificationItem({
