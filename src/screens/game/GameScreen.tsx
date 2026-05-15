@@ -143,6 +143,7 @@ export function GameScreen() {
     setMyAnswer(optionIndex);
     await submitAnswer({
       gameSessionId: session.id,
+      roomId: session.roomId,
       userId: appUser.id,
       questionId: currentQuestionId!,
       selectedOption: optionIndex,
@@ -171,6 +172,7 @@ export function GameScreen() {
     setSelectedUserIds((prev) => [...prev, targetUserId]);
     await submitSelection({
       gameSessionId: session.id,
+      roomId: session.roomId,
       questionId: currentQuestionId!,
       selectorUserId: appUser.id,
       selectedUserId: targetUserId,
