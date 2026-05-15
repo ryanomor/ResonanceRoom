@@ -119,7 +119,11 @@ service cloud.firestore {
     match /userSelections/{selectionId} {
       allow get, list: if signedIn();
       allow create: if signedIn() && request.resource.data.selectorUserId == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.selectorUserId == request.auth.uid;
+      allow update: if signedIn() && resource.data.selectorUserId == request.auth.uid;
+      allow delete: if signedIn() && (
+        resource.data.selectorUserId == request.auth.uid ||
+        isRoomHost(getRoomByGameSession(resource.data.gameSessionId))
+      );
     }
 
     // QUESTIONS: readable to all signed-in; write restricted
