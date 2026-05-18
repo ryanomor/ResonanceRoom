@@ -150,7 +150,7 @@ export function GameScreen() {
       selectedOption: optionIndex,
       answeredAt: new Date().toISOString(),
     });
-  }, [session, appUser, session?.gameState]);
+  }, [session, appUser, session?.gameState, hostId]);
 
   const handleHostEndQuestion = useCallback(async () => {
     if (!session) return;
@@ -186,7 +186,7 @@ export function GameScreen() {
     if (theirAnswer === myAnswerIndex) {
       await setMatch(session.id, appUser.id, targetUserId, currentQuestionId!, true);
     }
-  }, [session, appUser, selectedUserIds, myAnswer, answers]);
+  }, [session, appUser, selectedUserIds, myAnswer, answers, hostId, currentQuestionId]);
 
   const handleNextQuestion = useCallback(async () => {
     if (!session) return;
