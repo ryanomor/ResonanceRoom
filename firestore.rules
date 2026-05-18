@@ -108,10 +108,9 @@ service cloud.firestore {
       allow get, list: if signedIn();
       allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if signedIn() && resource.data.userId == request.auth.uid;
-      // Host deletes all answers at end of game; roomId stored on doc to avoid chained get() calls
       allow delete: if signedIn() && (
         resource.data.userId == request.auth.uid ||
-        isRoomHost(resource.data.roomId)
+        resource.data.hostId == request.auth.uid
       );
     }
 
@@ -120,10 +119,9 @@ service cloud.firestore {
       allow get, list: if signedIn();
       allow create: if signedIn() && request.resource.data.selectorUserId == request.auth.uid;
       allow update: if signedIn() && resource.data.selectorUserId == request.auth.uid;
-      // Host deletes all selections between questions; roomId stored on doc to avoid chained get() calls
       allow delete: if signedIn() && (
         resource.data.selectorUserId == request.auth.uid ||
-        isRoomHost(resource.data.roomId)
+        resource.data.hostId == request.auth.uid
       );
     }
 
