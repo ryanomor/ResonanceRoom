@@ -105,7 +105,7 @@ export async function submitAnswer(answer: Omit<UserAnswer, 'id'>) {
 
   if (!existingSnap.empty) {
     const existingDocId = existingSnap.docs[0].id;
-    await updateDoc(doc(db, 'userAnswers', existingDocId), { selectedOption: answer.selectedOption, answeredAt: answer.answeredAt, hostId: answer.hostId });
+    await updateDoc(doc(db, 'userAnswers', existingDocId), { selectedOption: answer.selectedOption, answeredAt: answer.answeredAt });
   } else {
     const id = uuidv4();
     await setDoc(doc(db, 'userAnswers', id), { ...answer, id });
