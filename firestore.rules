@@ -108,10 +108,7 @@ service cloud.firestore {
       allow get, list: if signedIn();
       allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if signedIn() && resource.data.userId == request.auth.uid;
-      allow delete: if signedIn() && (
-        resource.data.userId == request.auth.uid ||
-        resource.data.hostId == request.auth.uid
-      );
+      allow delete: if if resource.data.hostId == request.auth.uid;
     }
 
     // USER SELECTIONS: created by participants (selectorUserId)
@@ -119,10 +116,7 @@ service cloud.firestore {
       allow get, list: if signedIn();
       allow create: if signedIn() && request.resource.data.selectorUserId == request.auth.uid;
       allow update: if signedIn() && resource.data.selectorUserId == request.auth.uid;
-      allow delete: if signedIn() && (
-        resource.data.selectorUserId == request.auth.uid ||
-        resource.data.hostId == request.auth.uid
-      );
+      allow delete: if if resource.data.hostId == request.auth.uid;
     }
 
     // QUESTIONS: readable to all signed-in; write restricted
