@@ -20,8 +20,8 @@ import {
   deleteSelection,
   useGameSession,
   useAnsweredCount,
-  deleteUserSelectionsForQuestion,
-  deleteUserAnswersForGameSession,
+  deleteOwnAnswerForQuestion,
+  deleteOwnSelectionsForQuestion,
 } from '../../hooks/useGame';
 import { getRoomById } from '../../hooks/useRooms';
 import { useParticipants } from '../../hooks/useParticipants';
@@ -138,6 +138,28 @@ export function GameScreen() {
     }
   }, [timeLeft]);
 
+  const [lastCleanedQuestionId, setLastCleanedQuestionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!session || !appUser) return;
+    const prevQuestionId = session.questionIds[session.currentQuestionIndex - 1];
+    if (session.gameState === 'question' && prevQuestionId && prevQuestionId !== lastCleanedQuestionId) {
+      setLastCleanedQuestionId(prevQuestionId);
+      deleteOwnAnswerForQuestion(session.id, prevQuestionId, appUser.id).catch(() => {});
+      deleteOwnSelectionsForQuestion(session.id, prevQuestionId, appUser.id).catch(() => {});
+    }
+  }, [session?.currentQuestionIndex, session?.gameState]);
+
+  useEffect(() => {
+    if (!session || !appUser) return;
+    const lastQuestionId = session.questionIds[session.questionIds.length - 1];
+    if (session.gameState === 'ended' && lastQuestionId && lastQuestionId !== lastCleanedQuestionId) {
+      setLastCleanedQuestionId(lastQuestionId);
+      deleteOwnAnswerForQuestion(session.id, lastQuestionId, appUser.id).catch(() => {});
+      deleteOwnSelectionsForQuestion(session.id, lastQuestionId, appUser.id).catch(() => {});
+    }
+  }, [session?.gameState]);
+
   useEffect(() => {
     if (session?.gameState === 'ended' && !gamesPlayedIncremented) {
       setGamesPlayedIncremented(true);
@@ -150,8 +172,6 @@ export function GameScreen() {
     setMyAnswer(optionIndex);
     await submitAnswer({
       gameSessionId: session.id,
-      roomId: session.roomId,
-      hostId: hostId!,
       userId: appUser.id,
       questionId: currentQuestionId!,
       selectedOption: optionIndex,
@@ -180,8 +200,6 @@ export function GameScreen() {
     setSelectedUserIds((prev) => [...prev, targetUserId]);
     await submitSelection({
       gameSessionId: session.id,
-      roomId: session.roomId,
-      hostId: hostId!,
       questionId: currentQuestionId!,
       selectorUserId: appUser.id,
       selectedUserId: targetUserId,
@@ -197,10 +215,6 @@ export function GameScreen() {
 
   const handleNextQuestion = useCallback(async () => {
     if (!session) return;
-    const currentQuestionId = session.questionIds[session.currentQuestionIndex];
-    if (currentQuestionId) {
-      await deleteUserSelectionsForQuestion(session.id, currentQuestionId);
-    }
     if (session.currentQuestionIndex < session.questionIds.length - 1) {
       const nextIndex = session.currentQuestionIndex + 1;
       const nextQuestionId = session.questionIds[nextIndex] ?? null;
@@ -214,7 +228,6 @@ export function GameScreen() {
         questionEndTime: new Date(now.getTime() + timeLimitMs).toISOString(),
       });
     } else {
-      await deleteUserAnswersForGameSession(session.id);
       await updateGameSession(session.id, { gameState: 'ended' });
       
       // Notify users about their matches

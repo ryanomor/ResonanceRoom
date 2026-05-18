@@ -146,29 +146,6 @@ export async function deleteSelection(
   await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 }
 
-export async function incrementGamesPlayedForRoom(roomId: string) {
-  const now = new Date().toISOString();
-  const participantsSnap = await getDocs(
-    query(
-      collection(db, 'roomParticipants'),
-      where('roomId', '==', roomId),
-      where('status', 'in', ['approved', 'paid', 'inGame'])
-    )
-  );
-  await Promise.all(
-    participantsSnap.docs.map(async (pDoc) => {
-      const userId = pDoc.data().userId as string;
-      const userSnap = await getDoc(doc(db, 'users', userId));
-      if (userSnap.exists()) {
-        const current = (userSnap.data().totalGamesPlayed as number) ?? 0;
-        await updateDoc(doc(db, 'users', userId), {
-          totalGamesPlayed: current + 1,
-          updatedAt: now,
-        });
-      }
-    })
-  );
-}
 
 export function useAnsweredCount(sessionId: string | null, questionId: string | null) {
   const [count, setCount] = useState(0);
@@ -190,20 +167,26 @@ export function useAnsweredCount(sessionId: string | null, questionId: string | 
   return count;
 }
 
-export async function deleteUserSelectionsForQuestion(sessionId: string, questionId: string) {
+export async function deleteOwnAnswerForQuestion(sessionId: string, questionId: string, userId: string) {
   const snap = await getDocs(
     query(
-      collection(db, 'userSelections'),
+      collection(db, 'userAnswers'),
       where('gameSessionId', '==', sessionId),
-      where('questionId', '==', questionId)
+      where('questionId', '==', questionId),
+      where('userId', '==', userId)
     )
   );
   await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 }
 
-export async function deleteUserAnswersForGameSession(sessionId: string) {
+export async function deleteOwnSelectionsForQuestion(sessionId: string, questionId: string, selectorUserId: string) {
   const snap = await getDocs(
-    query(collection(db, 'userAnswers'), where('gameSessionId', '==', sessionId))
+    query(
+      collection(db, 'userSelections'),
+      where('gameSessionId', '==', sessionId),
+      where('questionId', '==', questionId),
+      where('selectorUserId', '==', selectorUserId)
+    )
   );
   await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 }

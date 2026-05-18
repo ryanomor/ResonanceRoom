@@ -103,20 +103,20 @@ service cloud.firestore {
       allow update, delete: if isRoomHost(resource.data.roomId);
     }
 
-    // USER ANSWERS: created by participants for their own userId
+    // USER ANSWERS: created and deleted by the answering user only
     match /userAnswers/{answerId} {
       allow get, list: if signedIn();
       allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if signedIn() && resource.data.userId == request.auth.uid;
-      allow delete: if if resource.data.hostId == request.auth.uid;
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
     }
 
-    // USER SELECTIONS: created by participants (selectorUserId)
+    // USER SELECTIONS: created and deleted by the selecting user only
     match /userSelections/{selectionId} {
       allow get, list: if signedIn();
       allow create: if signedIn() && request.resource.data.selectorUserId == request.auth.uid;
       allow update: if signedIn() && resource.data.selectorUserId == request.auth.uid;
-      allow delete: if if resource.data.hostId == request.auth.uid;
+      allow delete: if signedIn() && resource.data.selectorUserId == request.auth.uid;
     }
 
     // QUESTIONS: readable to all signed-in; write restricted

@@ -129,8 +129,6 @@ export interface AppNotification {
 export interface UserAnswer {
   id: string;
   gameSessionId: string;
-  roomId: string;
-  hostId: string;
   userId: string;
   questionId: string;
   selectedOption: number;
@@ -140,8 +138,6 @@ export interface UserAnswer {
 export interface UserSelection {
   id: string;
   gameSessionId: string;
-  roomId: string;
-  hostId: string;
   questionId: string;
   selectorUserId: string;
   selectedUserId: string;
