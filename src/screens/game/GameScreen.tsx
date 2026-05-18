@@ -20,7 +20,6 @@ import {
   deleteSelection,
   useGameSession,
   useAnsweredCount,
-  incrementGamesPlayedForRoom,
   deleteUserSelectionsForQuestion,
   deleteUserAnswersForGameSession,
 } from '../../hooks/useGame';
@@ -29,7 +28,7 @@ import { useParticipants } from '../../hooks/useParticipants';
 import { useAuthStore } from '../../store/authStore';
 import { setMatch } from '../../hooks/useMatches';
 import { getMatchesBySessionId } from '../../hooks/useMatches';
-import { getUserById } from '../../hooks/useAuth';
+import { getUserById, incrementOwnGamesPlayed } from '../../hooks/useAuth';
 import { createNotification } from '../../hooks/useParticipants';
 import { colors, fontSize, spacing, radius } from '../../theme';
 import { getPaymentStatus, triggerHostPayout } from '../../lib/payments';
@@ -56,6 +55,7 @@ export function GameScreen() {
   const [initialized, setInitialized] = useState(false);
   const [paymentBlocked, setPaymentBlocked] = useState(false);
   const [payoutTriggered, setPayoutTriggered] = useState(false);
+  const [gamesPlayedIncremented, setGamesPlayedIncremented] = useState(false);
 
   const participants = useParticipants(roomId ?? null);
 
@@ -137,6 +137,13 @@ export function GameScreen() {
       ]).start();
     }
   }, [timeLeft]);
+
+  useEffect(() => {
+    if (session?.gameState === 'ended' && !gamesPlayedIncremented) {
+      setGamesPlayedIncremented(true);
+      incrementOwnGamesPlayed().catch(() => {});
+    }
+  }, [session?.gameState, gamesPlayedIncremented]);
 
   const handleAnswer = useCallback(async (optionIndex: number) => {
     if (!session || !appUser || session.gameState !== 'question') return;
@@ -244,7 +251,6 @@ export function GameScreen() {
       if (isHost && roomId && hostId && !payoutTriggered) {
         setPayoutTriggered(true);
         triggerHostPayout(roomId, hostId);
-        incrementGamesPlayedForRoom(roomId).catch(() => {});
       }
     }
   }, [session, isHost, roomId, hostId, payoutTriggered]);

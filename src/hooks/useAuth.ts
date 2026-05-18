@@ -197,6 +197,21 @@ export async function signOut() {
   useAuthStore.getState().setPendingSocialProfile(null);
 }
 
+export async function incrementOwnGamesPlayed() {
+  const uid = useAuthStore.getState().firebaseUser?.uid;
+  if (!uid) return;
+  const now = new Date().toISOString();
+  const userRef = doc(db, 'users', uid);
+  const snap = await getDoc(userRef);
+  if (!snap.exists()) return;
+  const current = (snap.data().totalGamesPlayed as number) ?? 0;
+  await updateDoc(userRef, { totalGamesPlayed: current + 1, updatedAt: now });
+  const appUser = useAuthStore.getState().appUser;
+  if (appUser) {
+    useAuthStore.getState().setAppUser({ ...appUser, totalGamesPlayed: current + 1, updatedAt: now });
+  }
+}
+
 export async function updateProfile(updates: Partial<User>) {
   const uid = useAuthStore.getState().firebaseUser?.uid;
   if (!uid) return;
