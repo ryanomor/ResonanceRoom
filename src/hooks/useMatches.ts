@@ -154,7 +154,12 @@ export async function setMatch(
 }
 
 export function isMatchExpired(match: Match) {
+  if (match.status === 'locked') return false;
   return new Date() > new Date(match.expiresAt) && match.status === 'active';
+}
+
+export function isMatchLocked(match: Match) {
+  return match.status === 'locked';
 }
 
 export async function markMatchChatted(matchId: string) {
@@ -162,6 +167,17 @@ export async function markMatchChatted(matchId: string) {
     status: 'chatted',
     firstChatAt: new Date().toISOString(),
   });
+}
+
+export async function lockMatch(matchId: string) {
+  await updateDoc(doc(db, 'matches', matchId), {
+    status: 'locked',
+    lockedAt: new Date().toISOString(),
+  });
+}
+
+export async function deleteMatch(matchId: string) {
+  await deleteDoc(doc(db, 'matches', matchId));
 }
 
 export async function getMatchesBySessionId(sessionId: string): Promise<Match[]> {

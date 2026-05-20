@@ -12,7 +12,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { useMessages, sendMessage, markRead } from '../../hooks/useChat';
-import { isMatchExpired } from '../../hooks/useMatches';
+import { isMatchExpired, isMatchLocked, lockMatch } from '../../hooks/useMatches';
 import { colors, fontSize, spacing, radius } from '../../theme';
 import { Avatar } from '../../components/ui/Avatar';
 import type { ChatMessage, Match, User } from '../../types';
@@ -57,6 +57,17 @@ export function ChatScreen() {
     }
   }, [messages.length]);
 
+  useEffect(() => {
+    if (!match || match.status === 'locked' || !matchId) return;
+    const senderIds = new Set(messages.map((m) => m.senderId));
+    const bothChatted = senderIds.has(match.uid1) && senderIds.has(match.uid2);
+    if (bothChatted) {
+      lockMatch(matchId).then(() => {
+        setMatch((prev) => prev ? { ...prev, status: 'locked' } : prev);
+      });
+    }
+  }, [messages, match?.status, matchId]);
+
   async function handleSend() {
     if (!text.trim() || !matchId || !appUser || sending) return;
     setSending(true);
@@ -70,6 +81,7 @@ export function ChatScreen() {
   }
 
   const expired = match ? isMatchExpired(match) || match.status === 'expired' : false;
+  const locked = match ? isMatchLocked(match) : false;
 
   function renderMessage({ item }: { item: ChatMessage }) {
     const mine = item.senderId === appUser?.id;
@@ -123,7 +135,12 @@ export function ChatScreen() {
         </View>
       )}
 
-      {match && !expired && (
+      {match && !expired && locked && (
+        <View style={styles.lockedBanner}>
+          <Text style={styles.lockedText}>Connected — this match will never expire</Text>
+        </View>
+      )}
+      {match && !expired && !locked && (
         <View style={styles.timerBanner}>
           <Text style={styles.timerText}>
             Expires {new Date(match.expiresAt).toLocaleString()}
@@ -207,6 +224,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   timerText: { fontSize: fontSize.xs, color: colors.accent, fontWeight: '600' },
+  lockedBanner: {
+    backgroundColor: `${colors.green}18`,
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: `${colors.green}33`,
+    alignItems: 'center',
+  },
+  lockedText: { fontSize: fontSize.xs, color: colors.green, fontWeight: '600' },
   messageList: { padding: spacing[4], paddingBottom: 16, gap: 8 },
   msgRow: { maxWidth: '80%', gap: 4 },
   msgLeft: { alignSelf: 'flex-start', alignItems: 'flex-start' },

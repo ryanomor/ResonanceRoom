@@ -4,7 +4,7 @@ export type RoomStatus = 'waiting' | 'inProgress' | 'completed';
 
 export type GameState = 'question' | 'selection' | 'transition' | 'ended';
 
-export type MatchStatus = 'active' | 'chatted' | 'expired';
+export type MatchStatus = 'active' | 'chatted' | 'locked' | 'expired';
 
 export type ParticipantStatus = 'pending' | 'approved' | 'rejected' | 'paid' | 'inGame';
 
