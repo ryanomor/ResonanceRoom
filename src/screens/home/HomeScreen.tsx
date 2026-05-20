@@ -96,32 +96,6 @@ export function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.filterRow}>
-        <TouchableOpacity
-          style={[styles.filterTab, activeFilter === 'all' && styles.filterTabActive]}
-          onPress={() => setActiveFilter('all')}
-          activeOpacity={0.75}
-        >
-          <Text style={[styles.filterTabText, activeFilter === 'all' && styles.filterTabTextActive]}>
-            All Games
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterTab, activeFilter === 'mine' && styles.filterTabActive]}
-          onPress={() => setActiveFilter('mine')}
-          activeOpacity={0.75}
-        >
-          <Text style={[styles.filterTabText, activeFilter === 'mine' && styles.filterTabTextActive]}>
-            My Games
-          </Text>
-          {myRoomIds.size > 0 && (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{myRoomIds.size}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-
       <FlatList
         data={filteredRooms}
         keyExtractor={(r) => r.id}
@@ -148,10 +122,37 @@ export function HomeScreen() {
           ) : null
         }
         ListHeaderComponent={
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
-              {filteredRooms.length > 0 ? `${filteredRooms.length} game${filteredRooms.length !== 1 ? 's' : ''} available` : ''}
-            </Text>
+          <View>
+            <View style={styles.filterRow}>
+              <TouchableOpacity
+                style={[styles.filterTab, activeFilter === 'all' && styles.filterTabActive]}
+                onPress={() => setActiveFilter('all')}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.filterTabText, activeFilter === 'all' && styles.filterTabTextActive]}>
+                  All Games
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterTab, activeFilter === 'mine' && styles.filterTabActive]}
+                onPress={() => setActiveFilter('mine')}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.filterTabText, activeFilter === 'mine' && styles.filterTabTextActive]}>
+                  My Games
+                </Text>
+                {myRoomIds.size > 0 && (
+                  <View style={styles.filterBadge}>
+                    <Text style={styles.filterBadgeText}>{myRoomIds.size}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>
+                {filteredRooms.length > 0 ? `${filteredRooms.length} game${filteredRooms.length !== 1 ? 's' : ''} available` : ''}
+              </Text>
+            </View>
           </View>
         }
       />
@@ -204,6 +205,7 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing[5],
+    paddingTop: spacing[2],
     paddingBottom: spacing[3],
     gap: 8,
   },
