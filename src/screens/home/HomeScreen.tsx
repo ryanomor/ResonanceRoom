@@ -94,30 +94,6 @@ export function HomeScreen() {
           </Text>
           <Text style={styles.cityPillChevron}>›</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.filterTab, activeFilter === 'all' && styles.filterTabActive]}
-          onPress={() => setActiveFilter('all')}
-          activeOpacity={0.75}
-        >
-          <Text style={[styles.filterTabText, activeFilter === 'all' && styles.filterTabTextActive]}>
-            All Games
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterTab, activeFilter === 'mine' && styles.filterTabActive]}
-          onPress={() => setActiveFilter('mine')}
-          activeOpacity={0.75}
-        >
-          <Text style={[styles.filterTabText, activeFilter === 'mine' && styles.filterTabTextActive]}>
-            My Games
-          </Text>
-          {myRoomIds.size > 0 && (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{myRoomIds.size}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
       </View>
 
       <View style={styles.filterRow}>
