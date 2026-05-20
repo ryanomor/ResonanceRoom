@@ -6,7 +6,9 @@ import {
   onSnapshot,
   doc,
   updateDoc,
-  arrayUnion,
+  deleteDoc,
+  writeBatch,
+  getDocs,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { AppNotification } from '../types';
@@ -16,13 +18,11 @@ export function useNotifications() {
   const appUser = useAuthStore((s) => s.appUser);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [lastSeenAt, setLastSeenAt] = useState<string | null>(null);
-  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!appUser) return;
     setLastSeenAt(appUser.lastNotificationsSeenAt ?? null);
-    setDismissedIds(appUser.dismissedNotificationIds ?? []);
-  }, [appUser?.id, appUser?.lastNotificationsSeenAt, appUser?.dismissedNotificationIds]);
+  }, [appUser?.id, appUser?.lastNotificationsSeenAt]);
 
   useEffect(() => {
     if (!appUser) return;
@@ -33,12 +33,11 @@ export function useNotifications() {
     const unsub = onSnapshot(q, (snap) => {
       const all = snap.docs
         .map((d) => ({ ...d.data(), id: d.id } as AppNotification))
-        .filter((n) => !dismissedIds.includes(n.id))
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setNotifications(all);
     });
     return unsub;
-  }, [appUser?.id, dismissedIds]);
+  }, [appUser?.id]);
 
   const unseen = lastSeenAt
     ? notifications.filter(
@@ -47,14 +46,17 @@ export function useNotifications() {
     : notifications.length;
 
   async function dismiss(notificationId: string) {
+    await deleteDoc(doc(db, 'notifications', notificationId));
+  }
+
+  async function dismissAll() {
     if (!appUser) return;
-    await updateDoc(doc(db, 'users', appUser.id), {
-      dismissedNotificationIds: arrayUnion(notificationId),
-    });
-    useAuthStore.getState().setAppUser({
-      ...appUser,
-      dismissedNotificationIds: [...appUser.dismissedNotificationIds, notificationId],
-    });
+    const snap = await getDocs(
+      query(collection(db, 'notifications'), where('userId', '==', appUser.id))
+    );
+    const batch = writeBatch(db);
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
   }
 
   async function markAllSeen() {
@@ -64,5 +66,5 @@ export function useNotifications() {
     useAuthStore.getState().setAppUser({ ...appUser, lastNotificationsSeenAt: now });
   }
 
-  return { notifications, unseen, dismiss, markAllSeen };
+  return { notifications, unseen, dismiss, dismissAll, markAllSeen };
 }

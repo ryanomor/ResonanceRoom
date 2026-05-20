@@ -54,7 +54,7 @@ function NotificationItem({
 }
 
 export function NotificationsScreen() {
-  const { notifications, unseen, dismiss, markAllSeen } = useNotifications();
+  const { notifications, unseen, dismiss, dismissAll, markAllSeen } = useNotifications();
 
   useEffect(() => {
     if (unseen > 0) {
@@ -67,7 +67,7 @@ export function NotificationsScreen() {
       <View style={styles.topBar}>
         <Text style={styles.title}>Notifications</Text>
         {notifications.length > 0 && (
-          <TouchableOpacity onPress={() => notifications.forEach((n) => dismiss(n.id))}>
+          <TouchableOpacity onPress={dismissAll}>
             <Text style={styles.clearAll}>Clear all</Text>
           </TouchableOpacity>
         )}
