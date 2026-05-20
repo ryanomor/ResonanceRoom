@@ -10,6 +10,9 @@ import {
   Linking,
   Modal,
   KeyboardAvoidingView,
+  Image,
+  ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getRoomById, updateRoom } from '../../hooks/useRooms';
@@ -33,6 +36,110 @@ import { createPaymentLink, getPaymentStatus, refundPayment } from '../../lib/pa
 import type { Room, RoomParticipant } from '../../types';
 
 const MIN_PLAYERS_RATIO = 0.5;
+
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN!;
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
+async function geocodeAddress(address: string): Promise<{ lng: number; lat: number } | null> {
+  try {
+    const encoded = encodeURIComponent(address);
+    const res = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&limit=1`
+    );
+    const json = await res.json();
+    const coords = json?.features?.[0]?.center;
+    if (!coords) return null;
+    return { lng: coords[0], lat: coords[1] };
+  } catch {
+    return null;
+  }
+}
+
+function staticMapUrl(lng: number, lat: number, width: number): string {
+  const w = Math.min(Math.round(width), 1280);
+  const h = Math.round(w * 0.6);
+  return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/pin-l+a5d7c8(${lng},${lat})/${lng},${lat},14,0/${w}x${h}@2x?access_token=${MAPBOX_TOKEN}`;
+}
+
+function MapModal({
+  visible,
+  address,
+  onClose,
+}: {
+  visible: boolean;
+  address: string;
+  onClose: () => void;
+}) {
+  const [coords, setCoords] = useState<{ lng: number; lat: number } | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!visible || !address) return;
+    setCoords(null);
+    setFailed(false);
+    setGeocoding(true);
+    geocodeAddress(address).then((c) => {
+      if (c) setCoords(c);
+      else setFailed(true);
+      setGeocoding(false);
+    });
+  }, [visible, address]);
+
+  function openInMaps() {
+    const query = encodeURIComponent(address);
+    const url = Platform.OS === 'ios'
+      ? `maps://?q=${query}`
+      : `https://www.google.com/maps/search/?api=1&query=${query}`;
+    Linking.openURL(url).catch(() => {
+      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`);
+    });
+  }
+
+  const mapWidth = SCREEN_WIDTH - 32;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={mapStyles.overlay}>
+        <View style={mapStyles.sheet}>
+          <View style={mapStyles.handle} />
+
+          <View style={mapStyles.header}>
+            <Text style={mapStyles.headerTitle} numberOfLines={2}>{address}</Text>
+            <TouchableOpacity onPress={onClose} style={mapStyles.closeBtn}>
+              <Text style={mapStyles.closeText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={[mapStyles.mapContainer, { width: mapWidth, height: mapWidth * 0.6 }]}>
+            {geocoding && (
+              <View style={mapStyles.mapPlaceholder}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={mapStyles.mapPlaceholderText}>Loading map...</Text>
+              </View>
+            )}
+            {failed && (
+              <View style={mapStyles.mapPlaceholder}>
+                <Text style={mapStyles.mapErrorText}>Could not load map for this address.</Text>
+              </View>
+            )}
+            {coords && !geocoding && (
+              <Image
+                source={{ uri: staticMapUrl(coords.lng, coords.lat, mapWidth * 2) }}
+                style={{ width: mapWidth, height: mapWidth * 0.6, borderRadius: radius.lg }}
+                resizeMode="cover"
+              />
+            )}
+          </View>
+
+          <TouchableOpacity style={mapStyles.openMapsBtn} onPress={openInMaps} activeOpacity={0.85}>
+            <Text style={mapStyles.openMapsBtnText}>Open in Maps</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 function EditRoomModal({
   room,
@@ -172,6 +279,7 @@ export function RoomDetailScreen() {
   const [payingLink, setPayingLink] = useState(false);
   const [checkingPayment, setCheckingPayment] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [mapModalVisible, setMapModalVisible] = useState(false);
 
   const participants = useParticipants(id ?? null);
   const paidParticipantIds = usePaidParticipantIds(id ?? null);
@@ -341,9 +449,14 @@ export function RoomDetailScreen() {
           </View>
 
           {room.venueAddress ? (
-            <View style={styles.venue}>
+            <TouchableOpacity
+              style={styles.venue}
+              onPress={() => setMapModalVisible(true)}
+              activeOpacity={0.75}
+            >
               <Text style={styles.venueText}>📍 {room.venueAddress}</Text>
-            </View>
+              <Text style={styles.venueMapHint}>Tap to view map</Text>
+            </TouchableOpacity>
           ) : null}
         </View>
 
@@ -528,6 +641,14 @@ export function RoomDetailScreen() {
           }}
         />
       )}
+
+      {room?.venueAddress && (
+        <MapModal
+          visible={mapModalVisible}
+          address={room.venueAddress}
+          onClose={() => setMapModalVisible(false)}
+        />
+      )}
     </View>
   );
 }
@@ -590,8 +711,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: radius.md,
     padding: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  venueText: { fontSize: fontSize.sm, color: colors.muted },
+  venueText: { fontSize: fontSize.sm, color: colors.offwhite, fontWeight: '600' },
+  venueMapHint: { fontSize: fontSize.xs, color: colors.primary, marginTop: 3, fontWeight: '500' },
   section: { gap: 12 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   sectionTitle: { fontSize: fontSize.base, fontWeight: '700', color: colors.white },
@@ -729,4 +853,75 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   row: { flexDirection: 'row', gap: 12 },
+});
+
+const mapStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing[4],
+    paddingBottom: Platform.OS === 'ios' ? 40 : spacing[5],
+    paddingTop: spacing[3],
+    borderTopWidth: 1,
+    borderColor: colors.border,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    backgroundColor: colors.border,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: spacing[4],
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: spacing[4],
+    gap: 12,
+  },
+  headerTitle: {
+    fontSize: fontSize.base,
+    fontWeight: '700',
+    color: colors.white,
+    flex: 1,
+    lineHeight: 22,
+  },
+  closeBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeText: { fontSize: 13, color: colors.muted, fontWeight: '700' },
+  mapContainer: {
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    backgroundColor: colors.card,
+    alignSelf: 'center',
+    marginBottom: spacing[4],
+  },
+  mapPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  mapPlaceholderText: { fontSize: fontSize.sm, color: colors.muted },
+  mapErrorText: { fontSize: fontSize.sm, color: colors.muted, textAlign: 'center', paddingHorizontal: 24 },
+  openMapsBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.full,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  openMapsBtnText: { fontSize: fontSize.base, fontWeight: '700', color: colors.bg },
 });
