@@ -11,10 +11,13 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { useRooms } from '../../hooks/useRooms';
+import { useMyParticipations } from '../../hooks/useParticipants';
 import { Card } from '../../components/ui/Card';
 import { colors, fontSize, spacing, radius } from '../../theme';
 import { CityPickerModal } from './CityPickerModal';
 import type { Room } from '../../types';
+
+type FilterTab = 'all' | 'mine';
 
 function RoomCard({ room, onPress }: { room: Room; onPress: () => void }) {
   const isWaiting = room.status === 'waiting';
@@ -62,7 +65,17 @@ export function HomeScreen() {
   const appUser = useAuthStore((s) => s.appUser);
   const [selectedCity, setSelectedCity] = useState(appUser?.city ?? '');
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const { rooms, loading, refetch } = useRooms(selectedCity);
+  const myRoomIds = useMyParticipations(appUser?.id ?? null);
+
+  const filteredRooms = activeFilter === 'mine'
+    ? rooms.filter((r) => myRoomIds.has(r.id))
+    : rooms;
+
+  const emptyText = activeFilter === 'mine'
+    ? "You haven't joined any games yet."
+    : `Be the first to create a trivia room in ${selectedCity || 'your city'}!`;
 
   return (
     <View style={styles.container}>
@@ -83,8 +96,34 @@ export function HomeScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.filterRow}>
+        <TouchableOpacity
+          style={[styles.filterTab, activeFilter === 'all' && styles.filterTabActive]}
+          onPress={() => setActiveFilter('all')}
+          activeOpacity={0.75}
+        >
+          <Text style={[styles.filterTabText, activeFilter === 'all' && styles.filterTabTextActive]}>
+            All Games
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterTab, activeFilter === 'mine' && styles.filterTabActive]}
+          onPress={() => setActiveFilter('mine')}
+          activeOpacity={0.75}
+        >
+          <Text style={[styles.filterTabText, activeFilter === 'mine' && styles.filterTabTextActive]}>
+            My Games
+          </Text>
+          {myRoomIds.size > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{myRoomIds.size}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
       <FlatList
-        data={rooms}
+        data={filteredRooms}
         keyExtractor={(r) => r.id}
         renderItem={({ item }) => (
           <RoomCard
@@ -104,16 +143,14 @@ export function HomeScreen() {
           !loading ? (
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>No games yet</Text>
-              <Text style={styles.emptyText}>
-                Be the first to create a trivia room in {selectedCity || 'your city'}!
-              </Text>
+              <Text style={styles.emptyText}>{emptyText}</Text>
             </View>
           ) : null
         }
         ListHeaderComponent={
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
-              {rooms.length > 0 ? `${rooms.length} game${rooms.length !== 1 ? 's' : ''} available` : ''}
+              {filteredRooms.length > 0 ? `${filteredRooms.length} game${filteredRooms.length !== 1 ? 's' : ''} available` : ''}
             </Text>
           </View>
         }
@@ -164,6 +201,49 @@ const styles = StyleSheet.create({
   },
   cityPillText: { fontSize: fontSize.sm, fontWeight: '600', color: colors.offwhite, flex: 1 },
   cityPillChevron: { fontSize: 18, color: colors.muted, lineHeight: 20 },
+  filterRow: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing[5],
+    paddingBottom: spacing[3],
+    gap: 8,
+  },
+  filterTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  filterTabActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterTabText: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.muted,
+  },
+  filterTabTextActive: {
+    color: colors.bg,
+  },
+  filterBadge: {
+    backgroundColor: colors.bg,
+    borderRadius: radius.full,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  filterBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.primary,
+  },
   list: { padding: spacing[5], gap: 12, paddingBottom: 100 },
   sectionHeader: { marginBottom: 4 },
   sectionTitle: { fontSize: fontSize.sm, color: colors.muted, fontWeight: '600' },

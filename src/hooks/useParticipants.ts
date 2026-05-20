@@ -51,6 +51,25 @@ const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+export function useMyParticipations(userId: string | null): Set<string> {
+  const [roomIds, setRoomIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!userId) return;
+    const q = query(
+      collection(db, 'roomParticipants'),
+      where('userId', '==', userId),
+      where('status', 'in', ['pending', 'approved', 'paid', 'inGame'])
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setRoomIds(new Set(snap.docs.map((d) => d.data().roomId as string)));
+    });
+    return unsub;
+  }, [userId]);
+
+  return roomIds;
+}
+
 export function useParticipants(roomId: string | null) {
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
 
