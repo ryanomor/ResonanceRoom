@@ -13,7 +13,15 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { userId } = await req.json();
+    let userId: string | null = null;
+
+    if (req.method === "GET") {
+      const url = new URL(req.url);
+      userId = url.searchParams.get("userId");
+    } else {
+      const body = await req.json();
+      userId = body.userId ?? null;
+    }
 
     if (!userId) {
       return new Response(
@@ -75,6 +83,11 @@ Deno.serve(async (req: Request) => {
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", userId);
+
+    if (req.method === "GET") {
+      const html = `<!DOCTYPE html><html><head><title>Stripe Connect</title></head><body style="font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#111;color:#fff;"><div style="text-align:center;"><h1>${isActive ? "Connected!" : "Almost there..."}</h1><p>${isActive ? "Your Stripe account is now active. You can close this window and return to the app." : "Your account setup is not yet complete. Please return to the app and try again."}</p></div></body></html>`;
+      return new Response(html, { headers: { ...corsHeaders, "Content-Type": "text/html" } });
+    }
 
     return new Response(
       JSON.stringify({

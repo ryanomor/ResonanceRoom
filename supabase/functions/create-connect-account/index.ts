@@ -76,10 +76,11 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const supabaseFunctionsBase = `${supabaseUrl}/functions/v1`;
     const linkBody = new URLSearchParams({
       "account": stripeAccountId,
-      "refresh_url": `echomatch://stripe-connect/refresh?userId=${userId}`,
-      "return_url": `echomatch://stripe-connect/complete?userId=${userId}`,
+      "refresh_url": `${supabaseFunctionsBase}/create-connect-account`,
+      "return_url": `${supabaseFunctionsBase}/stripe-connect-callback?userId=${userId}`,
       "type": "account_onboarding",
     });
 
