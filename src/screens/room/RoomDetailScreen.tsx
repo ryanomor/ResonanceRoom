@@ -9,7 +9,6 @@ import {
   Alert,
   Linking,
   Modal,
-  KeyboardAvoidingView,
   Image,
   ActivityIndicator,
   Dimensions,
@@ -196,10 +195,7 @@ function EditRoomModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.modalContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <View style={styles.modalContainer}>
         <View style={styles.modalTopBar}>
           <TouchableOpacity onPress={onClose}>
             <Text style={styles.modalCancel}>Cancel</Text>
@@ -271,7 +267,7 @@ function EditRoomModal({
           <Text style={[styles.sectionLabel, { marginTop: spacing[5] }]}>Questions</Text>
           <QuestionPicker selectedIds={questionIds} onChange={setQuestionIds} />
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -863,7 +859,7 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: fontSize.base, fontWeight: '800', color: colors.white },
   modalCancel: { fontSize: fontSize.base, color: colors.muted, fontWeight: '600', width: 60 },
   modalSave: { fontSize: fontSize.base, color: colors.accent, fontWeight: '700', width: 60, textAlign: 'right' },
-  modalContent: { padding: spacing[5], gap: 4, paddingBottom: 60 },
+  modalContent: { padding: spacing[5], gap: 4, paddingBottom: 120 },
   errorBanner: {
     backgroundColor: `${colors.error}22`,
     borderWidth: 1,
