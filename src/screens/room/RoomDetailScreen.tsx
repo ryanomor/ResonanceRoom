@@ -492,6 +492,12 @@ export function RoomDetailScreen() {
                 >
                   <Avatar uri={p.avatarUrl} size="sm" />
                   <Text style={styles.participantName}>{p.username}</Text>
+                  {(() => {
+                    const g = genderMap[p.userId];
+                    if (g === 'male') return <Mars size={13} color={colors.accent} strokeWidth={2.5} />;
+                    if (g === 'female') return <Venus size={13} color={colors.primary} strokeWidth={2.5} />;
+                    return null;
+                  })()}
                   <View style={styles.actions}>
                     <TouchableOpacity
                       style={[styles.actionBtn, styles.approveBtn]}
