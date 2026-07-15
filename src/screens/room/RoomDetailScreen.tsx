@@ -21,6 +21,7 @@ import {
   updateParticipantStatus,
   usePaidParticipantIds,
   withdrawFromRoom,
+  createNotification,
 } from '../../hooks/useParticipants';
 import { useAuthStore } from '../../store/authStore';
 import { Avatar } from '../../components/ui/Avatar';
@@ -149,12 +150,14 @@ function EditRoomModal({
   onClose,
   onSaved,
   onDeleted,
+  participants,
 }: {
   room: Room;
   visible: boolean;
   onClose: () => void;
   onSaved: (updated: Room) => void;
   onDeleted: () => void;
+  participants: { userId: string; status: string; role: string }[];
 }) {
   const [title, setTitle] = useState(room.title);
   const [description, setDescription] = useState(room.description);
@@ -173,6 +176,20 @@ function EditRoomModal({
     setError('');
     setDeleting(true);
     try {
+      const recipientIds = participants
+        .filter((p) => p.status === 'pending' || p.status === 'approved' || p.status === 'paid' || p.role === 'host')
+        .map((p) => p.userId);
+      const uniqueIds = Array.from(new Set(recipientIds));
+      await Promise.all(
+        uniqueIds.map((uid) =>
+          createNotification(
+            uid,
+            'gameCancelled',
+            'Game Cancelled',
+            `The game "${room.title}" has been cancelled by the host.`
+          )
+        )
+      );
       await deleteRoom(room.id);
       onDeleted();
     } catch (e: any) {
@@ -285,39 +302,42 @@ function EditRoomModal({
           <Text style={[styles.sectionLabel, { marginTop: spacing[5] }]}>Questions</Text>
           <InlineQuestionSelector selectedIds={questionIds} onChange={setQuestionIds} />
 
-          <View style={styles.deleteSection}>
-            {confirmDelete ? (
-              <View style={styles.confirmDeleteContainer}>
-                <Text style={styles.confirmDeleteText}>Delete this game? This cannot be undone.</Text>
-                <View style={styles.confirmDeleteButtons}>
-                  <TouchableOpacity
-                    style={styles.cancelDeleteBtn}
-                    onPress={() => setConfirmDelete(false)}
-                    disabled={deleting}
-                  >
-                    <Text style={styles.cancelDeleteText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.confirmDeleteBtn}
-                    onPress={handleDelete}
-                    disabled={deleting}
-                  >
-                    <Text style={styles.confirmDeleteBtnText}>
-                      {deleting ? 'Deleting...' : 'Yes, Delete'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+          <Text style={[styles.sectionLabel, styles.dangerLabel, { marginTop: spacing[6] }]}>Danger Zone</Text>
+          <Text style={styles.dangerDescription}>
+            Deleting this game will notify all players and cannot be undone.
+          </Text>
+
+          {confirmDelete ? (
+            <View style={styles.confirmDeleteContainer}>
+              <Text style={styles.confirmDeleteText}>Are you sure you want to delete this game?</Text>
+              <View style={styles.confirmDeleteButtons}>
+                <TouchableOpacity
+                  style={styles.cancelDeleteBtn}
+                  onPress={() => setConfirmDelete(false)}
+                  disabled={deleting}
+                >
+                  <Text style={styles.cancelDeleteText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.confirmDeleteBtn}
+                  onPress={handleDelete}
+                  disabled={deleting}
+                >
+                  <Text style={styles.confirmDeleteBtnText}>
+                    {deleting ? 'Deleting...' : 'Yes, Delete'}
+                  </Text>
+                </TouchableOpacity>
               </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.deleteBtn}
-                onPress={() => setConfirmDelete(true)}
-                disabled={deleting}
-              >
-                <Text style={styles.deleteBtnText}>Delete Game</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              onPress={() => setConfirmDelete(true)}
+              disabled={deleting}
+            >
+              <Text style={styles.deleteBtnText}>Delete Game</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </View>
     </Modal>
@@ -719,6 +739,7 @@ export function RoomDetailScreen() {
           room={room}
           visible={editModalVisible}
           onClose={() => setEditModalVisible(false)}
+          participants={participants}
           onSaved={(updated) => {
             setRoom(updated);
             setEditModalVisible(false);
@@ -926,11 +947,14 @@ const styles = StyleSheet.create({
     color: colors.error,
     marginBottom: spacing[4],
   },
-  deleteSection: {
-    marginTop: spacing[6],
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing[5],
+  dangerLabel: {
+    color: colors.error,
+  },
+  dangerDescription: {
+    fontSize: fontSize.sm,
+    color: colors.muted,
+    lineHeight: 18,
+    marginBottom: spacing[3],
   },
   deleteBtn: {
     alignItems: 'center',
