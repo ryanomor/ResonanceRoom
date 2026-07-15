@@ -547,7 +547,7 @@ export function RoomDetailScreen() {
               activeOpacity={0.75}
             >
               <Text style={styles.venueText}>📍 {room.venueAddress}</Text>
-              <Text style={styles.venueMapHint}>Tap to view map</Text>
+              <Text style={styles.venueMapHint}>view map</Text>
             </TouchableOpacity>
           ) : null}
         </View>
