@@ -33,7 +33,9 @@ import { VenueSearchInput } from '../../components/ui/VenueSearchInput';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import { colors, fontSize, spacing, radius } from '../../theme';
 import { createPaymentLink, getPaymentStatus, refundPayment } from '../../lib/payments';
-import type { Room, RoomParticipant } from '../../types';
+import { getUserById } from '../../hooks/useAuth';
+import { Mars, Venus } from 'lucide-react-native';
+import type { Room, RoomParticipant, Gender } from '../../types';
 
 const MIN_PLAYERS_RATIO = 0.5;
 
@@ -287,6 +289,22 @@ export function RoomDetailScreen() {
   const myParticipant = participants.find((p) => p.userId === appUser?.id);
   const isHost = room?.hostId === appUser?.id;
 
+  const [genderMap, setGenderMap] = useState<Record<string, Gender | undefined>>({});
+  useEffect(() => {
+    const ids = participants.map((p) => p.userId).filter((uid) => uid && !genderMap[uid]);
+    if (ids.length === 0) return;
+    let cancelled = false;
+    Promise.all(ids.map(async (uid) => [uid, (await getUserById(uid))?.gender] as const)).then((results) => {
+      if (cancelled) return;
+      setGenderMap((prev) => {
+        const next = { ...prev };
+        results.forEach(([uid, g]) => { if (g) next[uid] = g; });
+        return next;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [participants, genderMap]);
+
   const isPaidRoom = (room?.entryFee ?? 0) > 0;
 
   const approvedPlayers = participants.filter(
@@ -537,6 +555,12 @@ export function RoomDetailScreen() {
                   )
                 ) : (
                   <View style={[styles.badge, styles.playerBadge]}>
+                    {(() => {
+                      const g = genderMap[p.userId];
+                      if (g === 'male') return <Mars size={11} color={colors.accent} strokeWidth={2.5} />;
+                      if (g === 'female') return <Venus size={11} color={colors.primary} strokeWidth={2.5} />;
+                      return null;
+                    })()}
                     <Text style={styles.badgeText}>player</Text>
                   </View>
                 )}
@@ -753,7 +777,7 @@ const styles = StyleSheet.create({
   rejectBtn: { backgroundColor: `${colors.error}22`, borderWidth: 1, borderColor: colors.error },
   approveText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.green },
   rejectText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.error },
-  badge: { borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
+  badge: { borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 3 },
   playerBadge: { backgroundColor: colors.card },
   badgeText: { fontSize: 10, fontWeight: '700', color: colors.muted },
   statusBadge: {
