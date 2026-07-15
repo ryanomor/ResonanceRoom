@@ -259,7 +259,7 @@ function EditRoomModal({
           />
 
           <Text style={[styles.sectionLabel, { marginTop: spacing[5] }]}>Location</Text>
-          <CitySearchInput label="City" value={city} onSelect={setCity} containerStyle={{ zIndex: 200 }} />
+          <CitySearchInput label="City" value={city} onSelect={setCity} containerStyle={{ zIndex: 200 }} editable={false} />
           <VenueSearchInput
             label="Venue Address"
             value={venueAddress}

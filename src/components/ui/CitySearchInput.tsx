@@ -18,9 +18,10 @@ interface Props {
   onSelect: (city: string) => void;
   containerStyle?: ViewStyle;
   error?: string;
+  editable?: boolean;
 }
 
-export function CitySearchInput({ label, value, onSelect, containerStyle, error }: Props) {
+export function CitySearchInput({ label, value, onSelect, containerStyle, error, editable = true }: Props) {
   const { results, loading, search, clear } = useCitySearch();
   const [text, setText] = useState(value);
   const [open, setOpen] = useState(false);
@@ -62,7 +63,7 @@ export function CitySearchInput({ label, value, onSelect, containerStyle, error 
       {label && <Text style={styles.label}>{label}</Text>}
       <View style={[styles.inputRow, open && styles.focused, error ? styles.errorBorder : null]}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, !editable && styles.inputDisabled]}
           value={text}
           onChangeText={handleChange}
           onFocus={handleFocus}
@@ -71,6 +72,8 @@ export function CitySearchInput({ label, value, onSelect, containerStyle, error 
           placeholderTextColor={colors.muted}
           autoCorrect={false}
           autoCapitalize="words"
+          editable={editable}
+          pointerEvents={editable ? 'auto' : 'none'}
         />
         {loading && <ActivityIndicator size="small" color={colors.accent} style={styles.spinner} />}
       </View>
@@ -130,6 +133,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: fontSize.base,
     color: colors.white,
+  },
+  inputDisabled: {
+    opacity: 0.6,
   },
   spinner: { marginLeft: 8 },
   errorText: { fontSize: fontSize.xs, color: colors.error, marginTop: 2 },
