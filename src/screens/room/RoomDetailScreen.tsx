@@ -33,7 +33,7 @@ import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import { colors, fontSize, spacing, radius } from '../../theme';
 import { createPaymentLink, getPaymentStatus, refundPayment } from '../../lib/payments';
 import { getUserById } from '../../hooks/useAuth';
-import { QuestionPicker } from '../../components/ui/QuestionPicker';
+import { InlineQuestionSelector } from '../../components/ui/InlineQuestionSelector';
 import { Mars, Venus } from 'lucide-react-native';
 import type { Room, RoomParticipant, Gender } from '../../types';
 
@@ -265,7 +265,7 @@ function EditRoomModal({
           </View>
 
           <Text style={[styles.sectionLabel, { marginTop: spacing[5] }]}>Questions</Text>
-          <QuestionPicker selectedIds={questionIds} onChange={setQuestionIds} />
+          <InlineQuestionSelector selectedIds={questionIds} onChange={setQuestionIds} />
         </ScrollView>
       </View>
     </Modal>
