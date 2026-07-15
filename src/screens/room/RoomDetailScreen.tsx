@@ -14,7 +14,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { getRoomById, updateRoom } from '../../hooks/useRooms';
+import { getRoomById, updateRoom, deleteRoom } from '../../hooks/useRooms';
 import {
   useParticipants,
   joinRoom,
@@ -148,11 +148,13 @@ function EditRoomModal({
   visible,
   onClose,
   onSaved,
+  onDeleted,
 }: {
   room: Room;
   visible: boolean;
   onClose: () => void;
   onSaved: (updated: Room) => void;
+  onDeleted: () => void;
 }) {
   const [title, setTitle] = useState(room.title);
   const [description, setDescription] = useState(room.description);
@@ -163,7 +165,23 @@ function EditRoomModal({
   const [scheduledStart, setScheduledStart] = useState(new Date(room.scheduledStart));
   const [questionIds, setQuestionIds] = useState<string[]>(room.questionIds ?? []);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState('');
+
+  async function handleDelete() {
+    setError('');
+    setDeleting(true);
+    try {
+      await deleteRoom(room.id);
+      onDeleted();
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not delete game.');
+      setConfirmDelete(false);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function handleSave() {
     if (!title.trim()) { setError('Title is required.'); return; }
@@ -266,6 +284,40 @@ function EditRoomModal({
 
           <Text style={[styles.sectionLabel, { marginTop: spacing[5] }]}>Questions</Text>
           <InlineQuestionSelector selectedIds={questionIds} onChange={setQuestionIds} />
+
+          <View style={styles.deleteSection}>
+            {confirmDelete ? (
+              <View style={styles.confirmDeleteContainer}>
+                <Text style={styles.confirmDeleteText}>Delete this game? This cannot be undone.</Text>
+                <View style={styles.confirmDeleteButtons}>
+                  <TouchableOpacity
+                    style={styles.cancelDeleteBtn}
+                    onPress={() => setConfirmDelete(false)}
+                    disabled={deleting}
+                  >
+                    <Text style={styles.cancelDeleteText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.confirmDeleteBtn}
+                    onPress={handleDelete}
+                    disabled={deleting}
+                  >
+                    <Text style={styles.confirmDeleteBtnText}>
+                      {deleting ? 'Deleting...' : 'Yes, Delete'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.deleteBtn}
+                onPress={() => setConfirmDelete(true)}
+                disabled={deleting}
+              >
+                <Text style={styles.deleteBtnText}>Delete Game</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </ScrollView>
       </View>
     </Modal>
@@ -671,6 +723,10 @@ export function RoomDetailScreen() {
             setRoom(updated);
             setEditModalVisible(false);
           }}
+          onDeleted={() => {
+            setEditModalVisible(false);
+            router.back();
+          }}
         />
       )}
 
@@ -869,6 +925,64 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.error,
     marginBottom: spacing[4],
+  },
+  deleteSection: {
+    marginTop: spacing[6],
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing[5],
+  },
+  deleteBtn: {
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.error,
+    backgroundColor: `${colors.error}11`,
+  },
+  deleteBtnText: {
+    fontSize: fontSize.base,
+    fontWeight: '700',
+    color: colors.error,
+  },
+  confirmDeleteContainer: {
+    gap: 12,
+  },
+  confirmDeleteText: {
+    fontSize: fontSize.sm,
+    color: colors.offwhite,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  confirmDeleteButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  cancelDeleteBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  cancelDeleteText: {
+    fontSize: fontSize.base,
+    fontWeight: '600',
+    color: colors.muted,
+  },
+  confirmDeleteBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: radius.md,
+    backgroundColor: colors.error,
+  },
+  confirmDeleteBtnText: {
+    fontSize: fontSize.base,
+    fontWeight: '700',
+    color: colors.white,
   },
   sectionLabel: {
     fontSize: fontSize.xs,
