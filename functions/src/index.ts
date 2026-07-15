@@ -34,3 +34,5 @@ export * from "./seed_user_doc";
 export * from "./seed_nyc_demo";
 
 export * from "./seed_questions_batch2";
+
+export * from "./seed_questions_batch3";
