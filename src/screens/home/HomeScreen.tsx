@@ -69,8 +69,12 @@ export function HomeScreen() {
   const { rooms, loading, refetch } = useRooms(selectedCity);
   const myRoomIds = useMyParticipations(appUser?.id ?? null);
 
+  const myActiveRoomIds = rooms.filter(
+    (r) => myRoomIds.has(r.id) && (r.status === 'waiting' || r.status === 'inProgress')
+  ).map((r) => r.id);
+
   const filteredRooms = activeFilter === 'mine'
-    ? rooms.filter((r) => myRoomIds.has(r.id))
+    ? rooms.filter((r) => myActiveRoomIds.includes(r.id))
     : rooms;
 
   const emptyText = activeFilter === 'mine'
@@ -141,9 +145,9 @@ export function HomeScreen() {
                 <Text style={[styles.filterTabText, activeFilter === 'mine' && styles.filterTabTextActive]}>
                   My Games
                 </Text>
-                {myRoomIds.size > 0 && (
+                {myActiveRoomIds.length > 0 && (
                   <View style={styles.filterBadge}>
-                    <Text style={styles.filterBadgeText}>{myRoomIds.size}</Text>
+                    <Text style={styles.filterBadgeText}>{myActiveRoomIds.length}</Text>
                   </View>
                 )}
               </TouchableOpacity>
