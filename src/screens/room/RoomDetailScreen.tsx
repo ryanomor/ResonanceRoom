@@ -34,6 +34,7 @@ import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import { colors, fontSize, spacing, radius } from '../../theme';
 import { createPaymentLink, getPaymentStatus, refundPayment } from '../../lib/payments';
 import { getUserById } from '../../hooks/useAuth';
+import { QuestionPicker } from '../../components/ui/QuestionPicker';
 import { Mars, Venus } from 'lucide-react-native';
 import type { Room, RoomParticipant, Gender } from '../../types';
 
@@ -161,6 +162,7 @@ function EditRoomModal({
   const [maxParticipants, setMaxParticipants] = useState(String(room.maxParticipants));
   const [entryFee, setEntryFee] = useState(String(room.entryFee));
   const [scheduledStart, setScheduledStart] = useState(new Date(room.scheduledStart));
+  const [questionIds, setQuestionIds] = useState<string[]>(room.questionIds ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -181,6 +183,7 @@ function EditRoomModal({
         maxParticipants: parsedMax,
         entryFee: parsedFee,
         scheduledStart: scheduledStart.toISOString(),
+        questionIds,
       };
       await updateRoom(room.id, updates);
       onSaved({ ...room, ...updates });
@@ -264,6 +267,9 @@ function EditRoomModal({
             <Text style={styles.fieldLabel}>Scheduled Start</Text>
             <DateTimePicker value={scheduledStart} onChange={setScheduledStart} />
           </View>
+
+          <Text style={[styles.sectionLabel, { marginTop: spacing[5] }]}>Questions</Text>
+          <QuestionPicker selectedIds={questionIds} onChange={setQuestionIds} />
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
