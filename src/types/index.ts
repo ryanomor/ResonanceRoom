@@ -75,7 +75,6 @@ export interface GameSession {
   questionEndTime?: string;
   createdAt: string;
   updatedAt: string;
-  isTest: boolean;
 }
 
 export interface RoomParticipant {

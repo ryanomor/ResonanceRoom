@@ -170,7 +170,6 @@ export const seed_nyc_demo = onRequest({ region: "us-central1" }, async (req, re
         questionEndTime: new Date(Date.now() + 30 * 1000).toISOString(),
         createdAt: now,
         updatedAt: now,
-        isTest: false,
       });
     }
 

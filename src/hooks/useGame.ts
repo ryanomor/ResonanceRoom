@@ -56,7 +56,6 @@ export async function createGameSession(roomId: string, questionIds: string[]): 
     gameState: 'question',
     createdAt: now,
     updatedAt: now,
-    isTest: false,
   };
   await setDoc(doc(db, 'gameSessions', session.id), session);
   return session;
