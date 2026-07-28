@@ -212,6 +212,21 @@ export async function incrementOwnGamesPlayed() {
   }
 }
 
+export async function incrementOwnMatches(count: number) {
+  const uid = useAuthStore.getState().firebaseUser?.uid;
+  if (!uid || count <= 0) return;
+  const now = new Date().toISOString();
+  const userRef = doc(db, 'users', uid);
+  const snap = await getDoc(userRef);
+  if (!snap.exists()) return;
+  const current = (snap.data().totalMatches as number) ?? 0;
+  await updateDoc(userRef, { totalMatches: current + count, updatedAt: now });
+  const appUser = useAuthStore.getState().appUser;
+  if (appUser) {
+    useAuthStore.getState().setAppUser({ ...appUser, totalMatches: current + count, updatedAt: now });
+  }
+}
+
 export async function updateProfile(updates: Partial<User>) {
   const uid = useAuthStore.getState().firebaseUser?.uid;
   if (!uid) return;

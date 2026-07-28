@@ -28,7 +28,7 @@ import { useParticipants } from '../../hooks/useParticipants';
 import { useAuthStore } from '../../store/authStore';
 import { setMatch } from '../../hooks/useMatches';
 import { getMatchesBySessionId } from '../../hooks/useMatches';
-import { getUserById, incrementOwnGamesPlayed } from '../../hooks/useAuth';
+import { getUserById, incrementOwnGamesPlayed, incrementOwnMatches } from '../../hooks/useAuth';
 import { createNotification } from '../../hooks/useParticipants';
 import { colors, fontSize, spacing, radius } from '../../theme';
 import { getPaymentStatus, triggerHostPayout } from '../../lib/payments';
@@ -56,6 +56,7 @@ export function GameScreen() {
   const [paymentBlocked, setPaymentBlocked] = useState(false);
   const [payoutTriggered, setPayoutTriggered] = useState(false);
   const [gamesPlayedIncremented, setGamesPlayedIncremented] = useState(false);
+  const [matchesIncremented, setMatchesIncremented] = useState(false);
 
   const participants = useParticipants(roomId ?? null);
 
@@ -166,6 +167,19 @@ export function GameScreen() {
       incrementOwnGamesPlayed().catch(() => {});
     }
   }, [session?.gameState, gamesPlayedIncremented]);
+
+  useEffect(() => {
+    if (!session || !appUser || session.gameState !== 'ended' || matchesIncremented) return;
+    setMatchesIncremented(true);
+    getMatchesBySessionId(session.id)
+      .then((matches) => {
+        const myMatchCount = matches.filter(
+          (m) => m.status === 'active' && (m.uid1 === appUser.id || m.uid2 === appUser.id)
+        ).length;
+        if (myMatchCount > 0) incrementOwnMatches(myMatchCount).catch(() => {});
+      })
+      .catch(() => {});
+  }, [session?.gameState, session?.id, appUser?.id, matchesIncremented]);
 
   const handleAnswer = useCallback(async (optionIndex: number) => {
     if (!session || !appUser || session.gameState !== 'question') return;
