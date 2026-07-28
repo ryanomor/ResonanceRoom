@@ -161,13 +161,15 @@ export function HomeScreen() {
         }
       />
 
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push('/room/create')}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
+      {appUser?.isHost ? (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => router.push('/room/create')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.fabText}>+</Text>
+        </TouchableOpacity>
+      ) : null}
 
       <CityPickerModal
         visible={cityPickerOpen}

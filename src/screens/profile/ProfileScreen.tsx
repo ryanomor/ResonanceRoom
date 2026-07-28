@@ -202,14 +202,14 @@ export function ProfileScreen() {
           </Card>
         )}
 
-        {appUser?.id ? (
+        {appUser?.isHost && appUser?.id ? (
           <View style={styles.stripeSection}>
             <Text style={styles.sectionTitle}>Host Settings</Text>
             <StripeConnectSection userId={appUser.id} />
           </View>
         ) : null}
 
-        {payouts.length > 0 && (
+        {appUser?.isHost && payouts.length > 0 && (
           <Card style={styles.earningsCard}>
             <View style={styles.earningsHeader}>
               <Text style={styles.sectionTitle}>Earnings</Text>
