@@ -362,6 +362,7 @@ export function RoomDetailScreen() {
 
   const myParticipant = participants.find((p) => p.userId === appUser?.id);
   const isHost = room?.hostId === appUser?.id;
+  const canSeeVenue = isHost || (myParticipant != null && ['approved', 'inGame', 'paid'].includes(myParticipant.status));
 
   const [genderMap, setGenderMap] = useState<Record<string, Gender | undefined>>({});
   useEffect(() => {
@@ -540,7 +541,7 @@ export function RoomDetailScreen() {
             </View>
           </View>
 
-          {room.venueAddress ? (
+          {canSeeVenue && room.venueAddress ? (
             <TouchableOpacity
               style={styles.venue}
               onPress={() => setMapModalVisible(true)}
@@ -549,7 +550,14 @@ export function RoomDetailScreen() {
               <Text style={styles.venueText}>📍 {room.venueAddress}</Text>
               <Text style={styles.venueMapHint}>view map</Text>
             </TouchableOpacity>
-          ) : null}
+          ) : (
+            <View style={styles.venue}>
+              <Text style={styles.venueText}>📍 {room.city}</Text>
+              {!canSeeVenue && (
+                <Text style={styles.venueLockedHint}>Exact location revealed once approved</Text>
+              )}
+            </View>
+          )}
         </View>
 
         {isHost && pendingCount > 0 && (
@@ -751,7 +759,7 @@ export function RoomDetailScreen() {
         />
       )}
 
-      {room?.venueAddress && (
+      {canSeeVenue && room?.venueAddress && (
         <MapModal
           visible={mapModalVisible}
           address={room.venueAddress}
@@ -825,6 +833,7 @@ const styles = StyleSheet.create({
   },
   venueText: { fontSize: fontSize.sm, color: colors.offwhite, fontWeight: '600' },
   venueMapHint: { fontSize: fontSize.xs, color: colors.primary, marginTop: 3, fontWeight: '500' },
+  venueLockedHint: { fontSize: fontSize.xs, color: colors.muted, marginTop: 3, fontWeight: '500' },
   section: { gap: 12 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   sectionTitle: { fontSize: fontSize.base, fontWeight: '700', color: colors.white },
