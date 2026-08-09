@@ -56,7 +56,8 @@ export async function signUp(
   password: string,
   username: string,
   city: string,
-  gender: Gender
+  gender: Gender,
+  isHost: boolean = false
 ) {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   const now = new Date().toISOString();
@@ -69,6 +70,7 @@ export async function signUp(
     createdAt: now,
     updatedAt: now,
     isActive: true,
+    isHost,
     totalGamesPlayed: 0,
     totalMatches: 0,
     favoriteCities: [],
@@ -162,7 +164,8 @@ export async function signInWithApple(): Promise<{ isNewUser: boolean }> {
 export async function completeSocialSignUp(
   username: string,
   city: string,
-  gender: Gender
+  gender: Gender,
+  isHost: boolean = false
 ) {
   const store = useAuthStore.getState();
   const pending = store.pendingSocialProfile;
@@ -178,6 +181,7 @@ export async function completeSocialSignUp(
     createdAt: now,
     updatedAt: now,
     isActive: true,
+    isHost,
     totalGamesPlayed: 0,
     totalMatches: 0,
     favoriteCities: [],

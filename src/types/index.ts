@@ -27,6 +27,7 @@ export interface User {
   updatedAt: string;
   lastLoginAt?: string;
   isActive: boolean;
+  isHost: boolean;
   totalGamesPlayed: number;
   totalMatches: number;
   favoriteCities: string[];

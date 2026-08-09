@@ -23,6 +23,7 @@ export function SocialProfileScreen() {
   const [username, setUsername] = useState('');
   const [city, setCity] = useState('');
   const [gender, setGender] = useState<Gender>('male');
+  const [isHost, setIsHost] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -34,7 +35,7 @@ export function SocialProfileScreen() {
     setError('');
     setLoading(true);
     try {
-      await completeSocialSignUp(username.trim(), city.trim(), gender);
+      await completeSocialSignUp(username.trim(), city.trim(), gender, isHost);
       router.replace('/(tabs)/home');
     } catch (e: any) {
       setError(e?.message ?? 'Something went wrong. Please try again.');
@@ -102,6 +103,28 @@ export function SocialProfileScreen() {
                   </Text>
                 </TouchableOpacity>
               ))}
+            </View>
+          </View>
+
+          <View style={styles.genderSection}>
+            <Text style={styles.fieldLabel}>I want to</Text>
+            <View style={styles.genderRow}>
+              <TouchableOpacity
+                onPress={() => setIsHost(false)}
+                style={[styles.genderBtn, !isHost && styles.genderBtnActive]}
+              >
+                <Text style={[styles.genderBtnText, !isHost && styles.genderBtnTextActive]}>
+                  Play Games
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setIsHost(true)}
+                style={[styles.genderBtn, isHost && styles.genderBtnActive]}
+              >
+                <Text style={[styles.genderBtnText, isHost && styles.genderBtnTextActive]}>
+                  Host Games
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
 
