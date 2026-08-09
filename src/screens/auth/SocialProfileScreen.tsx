@@ -107,22 +107,30 @@ export function SocialProfileScreen() {
           </View>
 
           <View style={styles.genderSection}>
-            <Text style={styles.fieldLabel}>I want to</Text>
-            <View style={styles.genderRow}>
+            <Text style={styles.fieldLabel}>I am a...</Text>
+            <View style={styles.roleCardContainer}>
               <TouchableOpacity
                 onPress={() => setIsHost(false)}
-                style={[styles.genderBtn, !isHost && styles.genderBtnActive]}
+                style={[styles.roleCard, !isHost && styles.roleCardActive]}
+                activeOpacity={0.85}
               >
-                <Text style={[styles.genderBtnText, !isHost && styles.genderBtnTextActive]}>
-                  Play Games
+                <Text style={[styles.roleCardTitle, !isHost && styles.roleCardTitleActive]}>
+                  Participant
+                </Text>
+                <Text style={[styles.roleCardDesc, !isHost && styles.roleCardDescActive]}>
+                  I just want to play trivia and meet a potential match
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setIsHost(true)}
-                style={[styles.genderBtn, isHost && styles.genderBtnActive]}
+                style={[styles.roleCard, isHost && styles.roleCardActive]}
+                activeOpacity={0.85}
               >
-                <Text style={[styles.genderBtnText, isHost && styles.genderBtnTextActive]}>
-                  Host Games
+                <Text style={[styles.roleCardTitle, isHost && styles.roleCardTitleActive]}>
+                  Host
+                </Text>
+                <Text style={[styles.roleCardDesc, isHost && styles.roleCardDescActive]}>
+                  I want to host trivia speed dating events in my city
                 </Text>
               </TouchableOpacity>
             </View>
@@ -220,4 +228,34 @@ const styles = StyleSheet.create({
   },
   genderBtnText: { fontSize: fontSize.base, color: colors.muted, fontWeight: '600' },
   genderBtnTextActive: { color: colors.white },
+  roleCardContainer: { gap: 12 },
+  roleCard: {
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  roleCardActive: {
+    borderColor: colors.accent,
+    backgroundColor: `${colors.accent}18`,
+  },
+  roleCardTitle: {
+    fontSize: fontSize.base,
+    fontWeight: '700',
+    color: colors.muted,
+    marginBottom: 4,
+  },
+  roleCardTitleActive: {
+    color: colors.accent,
+  },
+  roleCardDesc: {
+    fontSize: fontSize.sm,
+    color: colors.muted,
+    lineHeight: 20,
+  },
+  roleCardDescActive: {
+    color: colors.offwhite,
+  },
 });
