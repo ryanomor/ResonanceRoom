@@ -21,7 +21,6 @@ import { CitySearchInput } from '../../components/ui/CitySearchInput';
 import { StripeConnectSection } from '../../components/ui/StripeConnectSection';
 import { getHostPayouts, type HostPayout } from '../../lib/payments';
 import { colors, fontSize, spacing, radius } from '../../theme';
-import { Mail } from 'lucide-react-native';
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -50,12 +49,6 @@ export function ProfileScreen() {
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(
     appUser?.emailNotificationsEnabled ?? false
   );
-  const [savingEmailNotifications, setSavingEmailNotifications] = useState(false);
-  const [emailNotificationsError, setEmailNotificationsError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setEmailNotificationsEnabled(appUser?.emailNotificationsEnabled ?? false);
-  }, [appUser?.emailNotificationsEnabled]);
 
   useEffect(() => {
     if (!appUser?.id) return;
@@ -68,7 +61,7 @@ export function ProfileScreen() {
   async function handleSave() {
     setSaving(true);
     try {
-      await updateProfile({ username, bio, city });
+      await updateProfile({ username, bio, city, emailNotificationsEnabled });
       setEditing(false);
     } catch (e: any) {
       Alert.alert('Error', e?.message ?? 'Could not save profile.');
@@ -82,19 +75,14 @@ export function ProfileScreen() {
     router.replace('/auth/login');
   }
 
-  async function handleEmailNotificationsChange(enabled: boolean) {
-    const previousValue = emailNotificationsEnabled;
-    setEmailNotificationsEnabled(enabled);
-    setSavingEmailNotifications(true);
-    setEmailNotificationsError(null);
-    try {
-      await updateProfile({ emailNotificationsEnabled: enabled });
-    } catch {
-      setEmailNotificationsEnabled(previousValue);
-      setEmailNotificationsError('Could not update email notification preferences.');
-    } finally {
-      setSavingEmailNotifications(false);
+  function toggleEditing() {
+    if (editing) {
+      setUsername(appUser?.username ?? '');
+      setBio(appUser?.bio ?? '');
+      setCity(appUser?.city ?? '');
+      setEmailNotificationsEnabled(appUser?.emailNotificationsEnabled ?? false);
     }
+    setEditing((e) => !e);
   }
 
   function confirmDelete() {
@@ -123,7 +111,7 @@ export function ProfileScreen() {
     <View style={styles.container}>
       <View style={styles.topBar}>
         <Text style={styles.title}>Profile</Text>
-        <TouchableOpacity onPress={() => setEditing((e) => !e)}>
+        <TouchableOpacity onPress={toggleEditing}>
           <Text style={styles.editBtn}>{editing ? 'Cancel' : 'Edit'}</Text>
         </TouchableOpacity>
       </View>
@@ -196,30 +184,6 @@ export function ProfileScreen() {
           </View>
         </View>
 
-        <Card style={styles.emailCard}>
-          <View style={styles.emailHeader}>
-            <View style={styles.emailIcon}>
-              <Mail size={18} color={colors.accent} strokeWidth={2} />
-            </View>
-            <View style={styles.emailCopy}>
-              <Text style={styles.sectionTitle}>Email notifications</Text>
-              <Text style={styles.emailDescription}>
-                Get important game and match updates sent to {appUser?.email}.
-              </Text>
-            </View>
-            <Switch
-              value={emailNotificationsEnabled}
-              onValueChange={handleEmailNotificationsChange}
-              disabled={savingEmailNotifications}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={emailNotificationsEnabled ? colors.white : colors.muted}
-            />
-          </View>
-          {emailNotificationsError ? (
-            <Text style={styles.emailError}>{emailNotificationsError}</Text>
-          ) : null}
-        </Card>
-
         <Card style={styles.infoCard}>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Gender</Text>
@@ -251,6 +215,32 @@ export function ProfileScreen() {
             </View>
           </Card>
         )}
+
+        <View style={styles.preferencesSection}>
+          <Text style={styles.sectionTitle}>Preferences</Text>
+          <Card style={styles.preferencesCard}>
+            <View style={styles.prefRow}>
+              <View style={styles.prefLeft}>
+                <Text style={styles.prefLabel}>Email notifications</Text>
+                <Text style={styles.prefDescription}>
+                  Get game and match updates sent to {appUser?.email}.
+                </Text>
+              </View>
+              {editing ? (
+                <Switch
+                  value={emailNotificationsEnabled}
+                  onValueChange={setEmailNotificationsEnabled}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={emailNotificationsEnabled ? colors.white : colors.muted}
+                />
+              ) : (
+                <Text style={styles.prefValue}>
+                  {emailNotificationsEnabled ? 'On' : 'Off'}
+                </Text>
+              )}
+            </View>
+          </Card>
+        </View>
 
         {appUser?.isHost && appUser?.id ? (
           <View style={styles.stripeSection}>
@@ -363,19 +353,13 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: fontSize['2xl'], fontWeight: '900', color: colors.white },
   statLabel: { fontSize: fontSize.xs, color: colors.muted, marginTop: 4 },
-  emailCard: { padding: 16 },
-  emailHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  emailIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    backgroundColor: `${colors.accent}18`,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emailCopy: { flex: 1 },
-  emailDescription: { fontSize: fontSize.xs, color: colors.muted, lineHeight: 18 },
-  emailError: { fontSize: fontSize.xs, color: colors.error, marginTop: 10 },
+  preferencesSection: { gap: 12 },
+  preferencesCard: { padding: 16 },
+  prefRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  prefLeft: { flex: 1 },
+  prefLabel: { fontSize: fontSize.sm, fontWeight: '700', color: colors.white },
+  prefDescription: { fontSize: fontSize.xs, color: colors.muted, lineHeight: 18, marginTop: 4 },
+  prefValue: { fontSize: fontSize.sm, fontWeight: '600', color: colors.muted },
   infoCard: { gap: 0, padding: 0, overflow: 'hidden' },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 16 },
   infoRowBorder: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
