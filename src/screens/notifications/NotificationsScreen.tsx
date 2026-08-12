@@ -98,6 +98,7 @@ export function NotificationsScreen() {
   function handlePress(notification: AppNotification) {
     const route = getNotificationRoute(notification);
     if (route) {
+      dismiss(notification.id);
       router.push(route as Href);
     }
   }
