@@ -12,7 +12,7 @@ export type ParticipantRole = 'player' | 'host';
 
 export type QuestionDifficulty = 'easy' | 'medium' | 'hard';
 
-export type AppNotificationType = 'gameStartingSoon' | 'joinRequestUpdate' | 'newCityGame' | 'newMatch' | 'gameCancelled';
+export type AppNotificationType = 'gameStartingSoon' | 'joinRequestUpdate' | 'newCityGame' | 'newMatch' | 'gameCancelled' | 'newMessage';
 
 export interface User {
   id: string;
@@ -123,6 +123,7 @@ export interface AppNotification {
   type: AppNotificationType;
   title: string;
   message?: string;
+  linkId?: string;
   createdAt: string;
   updatedAt: string;
 }

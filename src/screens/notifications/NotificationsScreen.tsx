@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
+import { useRouter } from 'expo-router';
+import type { Href } from 'expo-router';
 import { useNotifications } from '../../hooks/useNotifications';
 import { colors, fontSize, spacing, radius } from '../../theme';
 import type { AppNotification } from '../../types';
@@ -17,14 +19,38 @@ const TYPE_ICONS: Record<string, string> = {
   joinRequestUpdate: '✅',
   newCityGame: '🏙️',
   newMatch: '💕',
+  newMessage: '💬',
+  gameCancelled: '🚫',
 };
+
+function getNotificationRoute(notification: AppNotification): string | null {
+  const id = notification.linkId;
+  if (!id) return null;
+  switch (notification.type) {
+    case 'newMatch':
+      return `/user/${id}`;
+    case 'newMessage':
+      return `/chat/${id}`;
+    case 'gameStartingSoon':
+    case 'gameCancelled':
+      return `/game/${id}`;
+    case 'joinRequestUpdate':
+      return `/room/${id}`;
+    case 'newCityGame':
+      return `/room/${id}`;
+    default:
+      return null;
+  }
+}
 
 function NotificationItem({
   notification,
   onDismiss,
+  onPress,
 }: {
   notification: AppNotification;
   onDismiss: () => void;
+  onPress: () => void;
 }) {
   const icon = TYPE_ICONS[notification.type] ?? '🔔';
   const date = new Date(notification.createdAt).toLocaleDateString([], {
@@ -33,9 +59,15 @@ function NotificationItem({
     hour: '2-digit',
     minute: '2-digit',
   });
+  const isClickable = getNotificationRoute(notification) !== null;
 
   return (
-    <View style={styles.item}>
+    <TouchableOpacity
+      style={styles.item}
+      onPress={onPress}
+      disabled={!isClickable}
+      activeOpacity={isClickable ? 0.7 : 1}
+    >
       <View style={styles.iconWrap}>
         <Text style={styles.icon}>{icon}</Text>
       </View>
@@ -49,18 +81,26 @@ function NotificationItem({
       <TouchableOpacity onPress={onDismiss} style={styles.dismissBtn}>
         <Text style={styles.dismissText}>✕</Text>
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 export function NotificationsScreen() {
   const { notifications, unseen, dismiss, dismissAll, markAllSeen } = useNotifications();
+  const router = useRouter();
 
   useEffect(() => {
     if (unseen > 0) {
       markAllSeen();
     }
   }, []);
+
+  function handlePress(notification: AppNotification) {
+    const route = getNotificationRoute(notification);
+    if (route) {
+      router.push(route as Href);
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -77,7 +117,11 @@ export function NotificationsScreen() {
         data={notifications}
         keyExtractor={(n) => n.id}
         renderItem={({ item }) => (
-          <NotificationItem notification={item} onDismiss={() => dismiss(item.id)} />
+          <NotificationItem
+            notification={item}
+            onDismiss={() => dismiss(item.id)}
+            onPress={() => handlePress(item)}
+          />
         )}
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
