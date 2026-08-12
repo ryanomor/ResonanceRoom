@@ -33,6 +33,7 @@ export interface User {
   favoriteCities: string[];
   lastNotificationsSeenAt?: string;
   dismissedNotificationIds: string[];
+  emailNotificationsEnabled?: boolean;
 }
 
 export interface Room {

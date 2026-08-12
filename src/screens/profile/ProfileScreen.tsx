@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
@@ -20,6 +21,7 @@ import { CitySearchInput } from '../../components/ui/CitySearchInput';
 import { StripeConnectSection } from '../../components/ui/StripeConnectSection';
 import { getHostPayouts, type HostPayout } from '../../lib/payments';
 import { colors, fontSize, spacing, radius } from '../../theme';
+import { Mail } from 'lucide-react-native';
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -45,6 +47,15 @@ export function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [payouts, setPayouts] = useState<HostPayout[]>([]);
   const [payoutsLoading, setPayoutsLoading] = useState(false);
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(
+    appUser?.emailNotificationsEnabled ?? false
+  );
+  const [savingEmailNotifications, setSavingEmailNotifications] = useState(false);
+  const [emailNotificationsError, setEmailNotificationsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEmailNotificationsEnabled(appUser?.emailNotificationsEnabled ?? false);
+  }, [appUser?.emailNotificationsEnabled]);
 
   useEffect(() => {
     if (!appUser?.id) return;
@@ -69,6 +80,21 @@ export function ProfileScreen() {
   async function handleSignOut() {
     await signOut();
     router.replace('/auth/login');
+  }
+
+  async function handleEmailNotificationsChange(enabled: boolean) {
+    const previousValue = emailNotificationsEnabled;
+    setEmailNotificationsEnabled(enabled);
+    setSavingEmailNotifications(true);
+    setEmailNotificationsError(null);
+    try {
+      await updateProfile({ emailNotificationsEnabled: enabled });
+    } catch {
+      setEmailNotificationsEnabled(previousValue);
+      setEmailNotificationsError('Could not update email notification preferences.');
+    } finally {
+      setSavingEmailNotifications(false);
+    }
   }
 
   function confirmDelete() {
@@ -169,6 +195,30 @@ export function ProfileScreen() {
             <Text style={styles.statLabel}>Cities</Text>
           </View>
         </View>
+
+        <Card style={styles.emailCard}>
+          <View style={styles.emailHeader}>
+            <View style={styles.emailIcon}>
+              <Mail size={18} color={colors.accent} strokeWidth={2} />
+            </View>
+            <View style={styles.emailCopy}>
+              <Text style={styles.sectionTitle}>Email notifications</Text>
+              <Text style={styles.emailDescription}>
+                Get important game and match updates sent to {appUser?.email}.
+              </Text>
+            </View>
+            <Switch
+              value={emailNotificationsEnabled}
+              onValueChange={handleEmailNotificationsChange}
+              disabled={savingEmailNotifications}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={emailNotificationsEnabled ? colors.white : colors.muted}
+            />
+          </View>
+          {emailNotificationsError ? (
+            <Text style={styles.emailError}>{emailNotificationsError}</Text>
+          ) : null}
+        </Card>
 
         <Card style={styles.infoCard}>
           <View style={styles.infoRow}>
@@ -313,6 +363,19 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: fontSize['2xl'], fontWeight: '900', color: colors.white },
   statLabel: { fontSize: fontSize.xs, color: colors.muted, marginTop: 4 },
+  emailCard: { padding: 16 },
+  emailHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  emailIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: `${colors.accent}18`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emailCopy: { flex: 1 },
+  emailDescription: { fontSize: fontSize.xs, color: colors.muted, lineHeight: 18 },
+  emailError: { fontSize: fontSize.xs, color: colors.error, marginTop: 10 },
   infoCard: { gap: 0, padding: 0, overflow: 'hidden' },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 16 },
   infoRowBorder: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
