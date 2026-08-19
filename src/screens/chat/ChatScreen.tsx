@@ -85,6 +85,9 @@ export function ChatScreen() {
 
   function renderMessage({ item }: { item: ChatMessage }) {
     const mine = item.senderId === appUser?.id;
+    const readTime = item.readAt
+      ? new Date(item.readAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : null;
     return (
       <View style={[styles.msgRow, mine ? styles.msgRight : styles.msgLeft]}>
         <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleOther]}>
@@ -92,9 +95,16 @@ export function ChatScreen() {
             {item.messageText}
           </Text>
         </View>
-        <Text style={styles.timestamp}>
-          {new Date(item.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
+        {mine ? (
+          <Text style={styles.timestamp}>
+            {new Date(item.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {readTime ? ` · Read ${readTime}` : ''}
+          </Text>
+        ) : (
+          <Text style={styles.timestamp}>
+            {new Date(item.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        )}
       </View>
     );
   }
