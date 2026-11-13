@@ -58,7 +58,7 @@ export default function AboutScreen() {
           <Text style={styles.ctaText}>Get Started</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push('/privacy-policy')}>
+        <TouchableOpacity onPress={() => router.push('/privacy')}>
           <Text style={styles.link}>Privacy Policy</Text>
         </TouchableOpacity>
       </View>
