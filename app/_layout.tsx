@@ -19,7 +19,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const onSocialProfile = inAuth && segments[1] === 'social-profile';
 
     const firstSeg = segments[0] as string;
-    const isPublic = firstSeg === 'about' || firstSeg === 'privacy-policy';
+    const isPublic = firstSeg === 'about' || firstSeg === 'privacy';
 
     if (!firebaseUser && !inAuth && !isPublic) {
       router.replace('/auth/login');
