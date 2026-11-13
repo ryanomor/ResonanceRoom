@@ -56,7 +56,7 @@ export default function RootLayout() {
         <Stack.Screen name="game/[id]" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="chat/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="about" options={{ presentation: 'card' }} />
-        <Stack.Screen name="privacy" options={{ presentation: 'card' }} />
+        <Stack.Screen name="privacy-policy" options={{ presentation: 'card' }} />
       </Stack>
     </AuthGuard>
   );
