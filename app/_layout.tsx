@@ -18,7 +18,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     const inAuth = segments[0] === 'auth';
     const onSocialProfile = inAuth && segments[1] === 'social-profile';
 
-    if (!firebaseUser && !inAuth) {
+    const firstSeg = segments[0] as string;
+    const isPublic = firstSeg === 'about' || firstSeg === 'privacy';
+
+    if (!firebaseUser && !inAuth && !isPublic) {
       router.replace('/auth/login');
     } else if (firebaseUser && pendingSocialProfile && !onSocialProfile) {
       router.replace('/auth/social-profile');
@@ -52,6 +55,8 @@ export default function RootLayout() {
         <Stack.Screen name="room/create" options={{ presentation: 'modal' }} />
         <Stack.Screen name="game/[id]" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="chat/[id]" options={{ presentation: 'card' }} />
+        <Stack.Screen name="about" options={{ presentation: 'card' }} />
+        <Stack.Screen name="privacy" options={{ presentation: 'card' }} />
       </Stack>
     </AuthGuard>
   );
