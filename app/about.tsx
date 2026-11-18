@@ -131,7 +131,7 @@ export default function AboutScreen() {
 
       {/* Who You'll Meet */}
       <View style={styles.section}>
-        <Image source={{ uri: COMMUNITY_IMAGE }} style={styles.sectionImage} />
+        <Image source={{ uri: COMMUNITY_IMAGE }} style={styles.communityImage} />
         <Text style={styles.heading}>Who You'll Meet Here</Text>
         <Text style={styles.body}>
           This group is for anyone in their 20s and 30s who values real conversation and genuine
@@ -221,6 +221,12 @@ const styles = StyleSheet.create({
   sectionImage: {
     width: '100%',
     height: 180,
+    borderRadius: radius.lg,
+    marginBottom: spacing[5],
+  },
+  communityImage: {
+    width: '100%',
+    aspectRatio: 1.5,
     borderRadius: radius.lg,
     marginBottom: spacing[5],
   },
