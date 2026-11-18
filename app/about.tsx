@@ -20,11 +20,11 @@ import {
 import { colors, fontSize, spacing, radius } from '../src/theme';
 
 const HERO_IMAGE =
-  'https://images.pexels.com/photos/3184339/pexels-photo-3184339.jpeg?auto=compress&cs=tinysrgb&w=1200';
+  'https://images.pexels.com/photos/16374127/pexels-photo-16374127.jpeg?auto=compress&cs=tinysrgb&w=1200';
 const EVENTS_IMAGE =
-  'https://images.pexels.com/photos/1540406/pexels-photo-1540406.jpeg?auto=compress&cs=tinysrgb&w=1200';
+  'https://images.pexels.com/photos/6174132/pexels-photo-6174132.jpeg?auto=compress&cs=tinysrgb&w=1200';
 const COMMUNITY_IMAGE =
-  'https://images.pexels.com/photos/1181622/pexels-photo-1181622.jpeg?auto=compress&cs=tinysrgb&w=1200';
+  'https://images.pexels.com/photos/6174144/pexels-photo-6174144.jpeg?auto=compress&cs=tinysrgb&w=1200';
 
 const EVENT_STEPS = [
   {
